@@ -43,6 +43,33 @@ export const initAuth = (callback: (user: User | null) => void) => {
           displayName: user.displayName || null,
         });
       }
+
+      // Ensure default self-person exists in people collection
+      try {
+        const peopleRef = collection(db, 'people');
+        const q = query(
+          peopleRef,
+          where('userId', '==', user.uid),
+          where('isSelf', '==', true)
+        );
+        const qSnap = await getDocs(q);
+        if (qSnap.empty) {
+          const name = user.displayName || "Jesica Hardoy (Yo)";
+          await addDoc(peopleRef, {
+            userId: user.uid,
+            name,
+            isSelf: true,
+            birthDate: '',
+            birthTime: '',
+            birthPlace: '',
+            notes: 'Ficha personal para mis consultas y lecturas generales.',
+            createdAt: serverTimestamp()
+          });
+        }
+      } catch (err) {
+        console.error("Error ensuring self-person exists:", err);
+      }
+
       callback(user);
     } else {
       callback(null);
@@ -97,6 +124,7 @@ export interface Person {
   birthPlace?: string;
   notes?: string;
   createdAt?: any;
+  isSelf?: boolean;
 }
 
 export const getPeople = async (userId: string): Promise<Person[]> => {

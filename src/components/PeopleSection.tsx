@@ -264,7 +264,12 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
                       <UserIcon className="w-4 h-4" />
                     </div>
                     <div className="truncate flex-1">
-                      <p className="text-sm font-medium font-serif truncate">{p.name}</p>
+                      <p className="text-sm font-medium font-serif truncate flex items-center gap-2">
+                        {p.name}
+                        {p.isSelf && (
+                          <span className="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-sans uppercase font-semibold">Tú</span>
+                        )}
+                      </p>
                       {p.birthDate && (
                         <p className="text-[10px] text-slate-500 font-mono mt-0.5 truncate">
                           {format(new Date(p.birthDate + 'T12:00:00'), "d MMM yyyy", { locale: es })}
@@ -562,13 +567,15 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
                         <Edit3 className="w-3.5 h-3.5" />
                         Editar
                       </button>
-                      <button
-                        onClick={() => handleDelete(selectedPerson.id)}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 border border-red-900/40 text-red-400 hover:bg-red-950/20 rounded-xl text-xs transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Eliminar
-                      </button>
+                      {!selectedPerson.isSelf && (
+                        <button
+                          onClick={() => handleDelete(selectedPerson.id)}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 border border-red-900/40 text-red-400 hover:bg-red-950/20 rounded-xl text-xs transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Eliminar
+                        </button>
+                      )}
                     </div>
                   </div>
 

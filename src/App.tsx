@@ -168,6 +168,21 @@ export default function App() {
         {activeTab === 'history' && <HistorySection user={user} />}
         {activeTab === 'stats' && <StatsSection user={user} />}
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-900 bg-slate-950/40 py-8 px-4 mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 font-mono tracking-wider">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-500/50 animate-pulse"></span>
+            <span>Oráculo del Tarot • Versión 1.5</span>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-center sm:text-right">
+            <span>Creado por <span className="text-slate-400 font-medium">Benjamín Hardoy</span></span>
+            <span className="hidden sm:inline text-slate-800">|</span>
+            <span>Para la <span className="text-purple-400/80 font-medium">Tarotista Jesica Hardoy</span></span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

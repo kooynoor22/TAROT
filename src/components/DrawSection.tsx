@@ -38,6 +38,13 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
       getPeople(user.uid)
         .then(data => {
           setPeople(data);
+          // Set default selected person to the "isSelf" person if no preselection exists
+          if (!preselectedPerson) {
+            const selfPerson = data.find(p => p.isSelf === true);
+            if (selfPerson) {
+              setSelectedPersonId(selfPerson.id);
+            }
+          }
         })
         .catch(err => {
           console.error("Error loading people in DrawSection:", err);
@@ -45,16 +52,22 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
     } else {
       setPeople([]);
     }
-  }, [user]);
+  }, [user, preselectedPerson]);
 
   // Sync preselected person
   useEffect(() => {
     if (preselectedPerson) {
       setSelectedPersonId(preselectedPerson.id);
     } else {
-      setSelectedPersonId('');
+      // If we cleared preselected, fall back to self person if available
+      const selfPerson = people.find(p => p.isSelf === true);
+      if (selfPerson) {
+        setSelectedPersonId(selfPerson.id);
+      } else {
+        setSelectedPersonId('');
+      }
     }
-  }, [preselectedPerson]);
+  }, [preselectedPerson, people]);
 
   // Ritual / Shuffling states
   const [shufflingProgress, setShufflingProgress] = useState(0);
@@ -179,7 +192,10 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
     setSaving(true);
     triggerHaptic(20);
     try {
-      const activePerson = people.find(p => p.id === selectedPersonId);
+      let activePerson = people.find(p => p.id === selectedPersonId);
+      if (!activePerson) {
+        activePerson = people.find(p => p.isSelf === true);
+      }
       await saveReading(
         user.uid, 
         drawnCards.map(c => c.card.id), 
@@ -327,7 +343,9 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
                     >
                       <option value="">Para mí / Consulta General</option>
                       {people.map(p => (
-                        <option key={p.id} value={p.id}>Ficha: {p.name}</option>
+                        <option key={p.id} value={p.id}>
+                          {p.isSelf ? `Mi Ficha Personal: ${p.name}` : `Ficha: ${p.name}`}
+                        </option>
                       ))}
                     </select>
                     {selectedPersonId && (
