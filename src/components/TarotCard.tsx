@@ -14,6 +14,7 @@ interface TarotCardProps {
   faceDown?: boolean;
   onClick?: () => void;
   className?: string;
+  staticMode?: boolean;
 }
 
 function LenormandIcon({ name, className }: { name: string; className: string }) {
@@ -62,7 +63,8 @@ export default function TarotCardComponent({
   traditionId = 'rws',
   faceDown = false, 
   onClick, 
-  className = '' 
+  className = '',
+  staticMode = false
 }: TarotCardProps) {
   const imageUrl = getCloudinaryUrl(card.index, deckId);
   const backUrl = getCloudinaryBackUrl(deckId);
@@ -118,6 +120,7 @@ export default function TarotCardComponent({
               src={backUrl} 
               alt="Card Back" 
               className="w-full h-full object-cover pointer-events-none opacity-85"
+              crossOrigin="anonymous"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop';
               }}
@@ -127,6 +130,79 @@ export default function TarotCardComponent({
         );
     }
   };
+
+  // Render simple flat card when in static export mode
+  if (staticMode) {
+    return (
+      <div 
+        className={`relative w-full aspect-[2/3] rounded-xl overflow-hidden shadow-lg border ${
+          isLenormand 
+            ? 'bg-[#f7f3e8] border-2 border-amber-800/40 text-stone-900' 
+            : traditionId === 'marsella'
+              ? 'bg-stone-950 border border-amber-900/40 text-stone-200'
+              : traditionId === 'egipcio'
+                ? 'bg-[#16120c] border border-yellow-800/40 text-amber-100'
+                : 'bg-slate-900 border border-slate-700/50 text-slate-100'
+        } ${className}`}
+      >
+        {faceDown ? (
+          getBackDesign()
+        ) : (
+          isLenormand ? (
+            <div className="w-full h-full p-3 flex flex-col justify-between relative bg-[#f9f6ef]">
+              <div className="absolute inset-1 border border-amber-800/10 rounded-lg pointer-events-none" />
+              <div className="flex justify-between items-center z-10">
+                <div className="w-7 h-7 rounded-full bg-[#fcfaf2] border border-amber-800/30 flex items-center justify-center font-serif text-xs font-bold text-amber-950">
+                  {card.number || 1}
+                </div>
+                <div className="text-[10px] px-1.5 py-0.5 rounded bg-[#f5f1e5] border border-stone-300 font-serif font-bold text-stone-700">
+                  {card.playingCard || 'A ♥'}
+                </div>
+              </div>
+              <div className="flex-1 flex flex-col items-center justify-center py-2 z-10">
+                <LenormandIcon name={card.iconName || 'Compass'} className="w-8 h-8 text-amber-800/85" />
+              </div>
+              <div className="text-center z-10">
+                <h3 className="text-[11px] font-serif font-bold text-amber-950 tracking-wide border-t border-amber-800/10 pt-1">
+                  {card.name}
+                </h3>
+              </div>
+            </div>
+          ) : (
+            <div className="relative w-full h-full">
+              {imageUrl ? (
+                <img 
+                  src={imageUrl} 
+                  alt={card.name} 
+                  className={`w-full h-full object-cover ${
+                    traditionId === 'marsella' 
+                      ? 'sepia-[0.35] contrast-[1.1] brightness-[0.9] saturate-[1.15]' 
+                      : traditionId === 'egipcio'
+                        ? 'sepia contrast-[1.15] brightness-[0.85] saturate-[0.9] hue-rotate-[5deg]'
+                        : 'brightness-[0.95]'
+                  }`}
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1633519446059-e3eb6c336b13?q=80&w=600&auto=format&fit=crop';
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 text-xs">
+                  Sin imagen
+                </div>
+              )}
+              {traditionId === 'marsella' && (
+                <div className="absolute inset-0 bg-amber-900/5 mix-blend-color-burn pointer-events-none" />
+              )}
+              {traditionId === 'egipcio' && (
+                <div className="absolute inset-0 bg-yellow-900/10 mix-blend-color pointer-events-none" />
+              )}
+            </div>
+          )
+        )}
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -213,6 +289,7 @@ export default function TarotCardComponent({
                         ? 'sepia contrast-[1.15] brightness-[0.85] saturate-[0.9] hue-rotate-[5deg]'
                         : 'brightness-[0.95]'
                   }`}
+                  crossOrigin="anonymous"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1633519446059-e3eb6c336b13?q=80&w=600&auto=format&fit=crop';
