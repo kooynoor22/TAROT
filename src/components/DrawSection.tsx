@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { TarotCard, getDeckForTradition, TRADITIONS, DECKS, getInterpretation } from '../data/tarot';
 import TarotCardComponent from './TarotCard';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Save, Layers, RefreshCw, Zap, Check, HelpCircle, ArrowRight, CornerDownRight, Eye, BookOpen, AlertCircle, User as UserIcon, X } from 'lucide-react';
+import { Sparkles, Save, Layers, RefreshCw, Zap, Check, HelpCircle, ArrowRight, CornerDownRight, Eye, BookOpen, AlertCircle, User as UserIcon, X, Camera } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { saveReading, getPeople, Person } from '../lib/firebase';
 import { triggerHaptic } from '../lib/haptic';
+import SharePostcardModal from './SharePostcardModal';
 
 type Step = 'setup' | 'shuffle' | 'cut' | 'reveal';
 type SpreadType = 'single' | 'three' | 'celtic';
@@ -84,6 +85,7 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
 
   // Active card details to inspect
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Fisher-Yates Shuffle Algorithm with visual simulation
   const performFisherYatesShuffle = () => {
@@ -872,6 +874,16 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
               >
                 Nueva Tirada / Reiniciar
               </button>
+
+              {allFlipped && (
+                <button
+                  onClick={() => { triggerHaptic(20); setIsShareModalOpen(true); }}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-full font-medium transition-all text-sm bg-gradient-to-r from-amber-500/20 to-purple-600/20 hover:from-amber-500/30 hover:to-purple-600/30 text-amber-300 border border-amber-500/30 hover:border-amber-400/50 shadow-lg shadow-amber-500/5 animate-bounce-slow"
+                >
+                  <Camera className="w-4 h-4 text-amber-400" />
+                  Descargar Postal (Foto)
+                </button>
+              )}
               
               {allFlipped && user && (
                 <button
@@ -892,6 +904,18 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
         )}
 
       </AnimatePresence>
+
+      <SharePostcardModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        drawnCards={drawnCards}
+        spreadType={spreadType}
+        traditionId={traditionId}
+        deckId={deckId}
+        tarotistName={user?.displayName || 'Jesica Hardoy'}
+        consultantName={people.find(p => p.id === selectedPersonId)?.name || 'Consulta General'}
+        question={question}
+      />
     </div>
   );
 }
