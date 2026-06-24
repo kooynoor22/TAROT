@@ -43,11 +43,16 @@ export default function App() {
               <MoonStar className="w-5 h-5 text-purple-400" />
             </div>
             <div className="text-center lg:text-left">
-              <h1 className="text-xl font-serif text-slate-100 tracking-wide flex items-center justify-center lg:justify-start gap-2">
-                Oráculo del Tarot
-                <Sparkles className="w-4 h-4 text-purple-400/70" />
+              <h1 className="text-xl sm:text-2xl font-serif text-slate-100 tracking-wide flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-x-2.5 gap-y-1.5">
+                <span className="flex items-center gap-1.5">
+                  Oráculo del Tarot
+                  <Sparkles className="w-4 h-4 text-purple-400/70" />
+                </span>
+                <span className="text-[10px] sm:text-xs font-sans text-amber-400/90 font-semibold bg-amber-500/10 border border-amber-500/25 px-2.5 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                  Creado para Jesica Hardoy
+                </span>
               </h1>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-medium tracking-widest uppercase">
+              <p className="text-[10px] sm:text-xs text-slate-400 font-medium tracking-widest uppercase mt-0.5">
                 {user ? `Conectado: ${user.displayName || user.email || 'Místico'}` : 'Sintonizando energías...'}
               </p>
             </div>
