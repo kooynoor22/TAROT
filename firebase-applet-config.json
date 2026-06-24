@@ -1,10 +1,9 @@
 {
-  "projectId": "elated-math-ckm1r",
-  "appId": "1:869138142389:web:1e031b972ca945014a1afc",
-  "apiKey": "AIzaSyA35mnbt4N4LgzPpvy93Y4zXSvBkIb2il8",
-  "authDomain": "elated-math-ckm1r.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-7a750aea-2f97-45dd-9e9a-087d9857f465",
-  "storageBucket": "elated-math-ckm1r.firebasestorage.app",
-  "messagingSenderId": "869138142389",
+  "projectId": "tarot-88359",
+  "appId": "1:1042084073397:web:424acf36cdeed78f4f13fc",
+  "apiKey": "AIzaSyCXh6Jfn_tj_bgPHgbA2wmcyYXycEXonm0",
+  "authDomain": "tarot-88359.firebaseapp.com",
+  "storageBucket": "tarot-88359.firebasestorage.app",
+  "messagingSenderId": "1042084073397",
   "measurementId": ""
 }

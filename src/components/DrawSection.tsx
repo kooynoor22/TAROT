@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Save, Layers, RefreshCw, Zap, Check, HelpCircle, ArrowRight, CornerDownRight, Eye, BookOpen, AlertCircle, User as UserIcon, X } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { saveReading, getPeople, Person } from '../lib/firebase';
+import { triggerHaptic } from '../lib/haptic';
 
 type Step = 'setup' | 'shuffle' | 'cut' | 'reveal';
 type SpreadType = 'single' | 'three' | 'celtic';
@@ -76,6 +77,7 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
     setIsShuffling(true);
     setShufflingProgress(0);
     setShuffleLog('Iniciando Algoritmo de Fisher-Yates...');
+    triggerHaptic(30);
     
     // Retrieve deck according to tradition
     const sourceDeck = getDeckForTradition(traditionId);
@@ -94,11 +96,18 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
         const percent = Math.round(((sourceDeck.length - 1 - i) / (sourceDeck.length - 1)) * 100);
         setShufflingProgress(percent);
         setShuffleLog(`Algoritmo: Permutando posición ${i} por ${j}...`);
+        
+        // Rhythmic gentle vibrations during shuffle
+        if (i % 4 === 0) {
+          triggerHaptic(10);
+        }
+        
         i--;
       } else {
         clearInterval(interval);
         setShufflingProgress(100);
         setShuffleLog('¡Mazo ordenado matemáticamente con equiprobabilidad de Fisher-Yates!');
+        triggerHaptic([35, 50, 35]); // Done haptic
         
         // Select cards based on spread
         let numCards = 3;
@@ -118,16 +127,49 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
 
   const handleCardClick = (index: number) => {
     if (drawnCards[index].faceDown) {
+      triggerHaptic(25);
       setDrawnCards(prev => {
         const next = [...prev];
         next[index].faceDown = false;
         return next;
       });
       setActiveCardIndex(index);
+      
+      // Auto smooth scroll to interpretation section on mobile so they don't miss it!
+      setTimeout(() => {
+        const interpretationElement = document.getElementById('interpretation-section');
+        if (interpretationElement) {
+          interpretationElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 150);
     } else {
+      triggerHaptic(15);
       // Toggle details display if already revealed
-      setActiveCardIndex(activeCardIndex === index ? null : index);
+      const nextIndex = activeCardIndex === index ? null : index;
+      setActiveCardIndex(nextIndex);
+      
+      if (nextIndex !== null) {
+        setTimeout(() => {
+          const interpretationElement = document.getElementById('interpretation-section');
+          if (interpretationElement) {
+            interpretationElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 150);
+      }
     }
+  };
+
+  const handleCutMazo = () => {
+    triggerHaptic([20, 35, 20]);
+    setCutState('divided');
+  };
+
+  const handleReunitePiles = () => {
+    triggerHaptic(40);
+    setCutState('reunited');
+    setTimeout(() => {
+      setStep('reveal');
+    }, 1200);
   };
 
   const allFlipped = drawnCards.length > 0 && drawnCards.every(c => !c.faceDown);
@@ -135,6 +177,7 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
   const handleSave = async () => {
     if (!user || !allFlipped || saved) return;
     setSaving(true);
+    triggerHaptic(20);
     try {
       const activePerson = people.find(p => p.id === selectedPersonId);
       await saveReading(
@@ -146,6 +189,7 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
         question || undefined
       );
       setSaved(true);
+      triggerHaptic([20, 50, 20]); // Success double haptic
     } catch (e) {
       console.error("Failed to save reading", e);
     } finally {
@@ -154,6 +198,7 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
   };
 
   const startNewRitual = () => {
+    triggerHaptic(20);
     setStep('setup');
     setDrawnCards([]);
     setCutState('uncut');
@@ -234,6 +279,7 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
                         key={trad.id}
                         type="button"
                         onClick={() => {
+                          triggerHaptic(15);
                           setTraditionId(trad.id);
                           // Reset spread compatibility if needed
                           if (trad.id === 'lenormand' && spreadType === 'celtic') {
@@ -349,7 +395,10 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
                         key={type}
                         type="button"
                         disabled={isDisabled}
-                        onClick={() => setSpreadType(type)}
+                        onClick={() => {
+                          triggerHaptic(15);
+                          setSpreadType(type);
+                        }}
                         className={`p-4 rounded-xl text-left border transition-all ${
                           active 
                             ? 'bg-purple-900/20 border-purple-500 shadow-lg shadow-purple-500/10' 
@@ -518,8 +567,8 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
                 <motion.div 
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="relative group cursor-pointer"
-                  onClick={() => setCutState('divided')}
+                  className="relative group cursor-pointer animate-bounce-subtle"
+                  onClick={handleCutMazo}
                 >
                   {/* Visual block representing stacked cards */}
                   <div className="absolute top-2 left-2 w-32 aspect-[2/3] bg-purple-950/20 rounded-xl border border-slate-800 shadow-md transform rotate-1" />
@@ -581,19 +630,14 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
             <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 flex justify-center">
               {cutState === 'uncut' ? (
                 <button
-                  onClick={() => setCutState('divided')}
+                  onClick={handleCutMazo}
                   className="px-6 py-2.5 bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 border border-purple-500/30 rounded-xl text-sm font-medium transition-all"
                 >
                   Cortar Mazo con la Mano Izquierda
                 </button>
               ) : cutState === 'divided' ? (
                 <button
-                  onClick={() => {
-                    setCutState('reunited');
-                    setTimeout(() => {
-                      setStep('reveal');
-                    }, 1200);
-                  }}
+                  onClick={handleReunitePiles}
                   className="px-8 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-medium transition-all shadow-md active:scale-95"
                 >
                   Reunir Pilas en un Solo Bloque
@@ -628,68 +672,98 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
               )}
             </div>
 
-            {/* Grid layout depending on spread type */}
-            <div className={`grid gap-6 w-full max-w-5xl justify-center ${
-              spreadType === 'single' 
-                ? 'grid-cols-1 max-w-[240px]' 
-                : spreadType === 'three' 
-                  ? 'grid-cols-1 sm:grid-cols-3' 
-                  : 'grid-cols-2 sm:grid-cols-5'
-            }`}>
-              <AnimatePresence>
-                {drawnCards.map((item, i) => {
-                  const isRevealed = !item.faceDown;
-                  const isSelected = activeCardIndex === i;
-                  return (
-                    <motion.div
-                      key={item.card.id + i}
-                      initial={{ opacity: 0, scale: 0.9, y: 30 }}
-                      animate={{ 
-                        opacity: 1, 
-                        scale: isSelected ? 1.05 : 1, 
-                        y: 0,
-                        borderColor: isSelected ? 'rgba(168,85,247,0.5)' : 'rgba(30,41,59,0.4)'
-                      }}
-                      transition={{ delay: i * 0.05, type: "spring", stiffness: 100 }}
-                      className={`flex flex-col items-center gap-4 bg-slate-900/30 p-4 rounded-xl border transition-all ${
-                        isSelected ? 'border-purple-500/50 bg-purple-950/5 shadow-lg shadow-purple-500/5' : 'border-slate-800/40'
-                      }`}
-                    >
-                      <span className="text-xs font-serif tracking-widest text-purple-300/80 uppercase border-b border-purple-500/20 pb-1 w-full text-center truncate px-2">
-                        {getPositionLabel(i)}
-                      </span>
-                      <div className="w-full max-w-[180px]">
-                        <TarotCardComponent
-                          card={item.card}
-                          deckId={deckId}
-                          traditionId={traditionId}
-                          faceDown={item.faceDown}
-                          onClick={() => handleCardClick(i)}
-                        />
-                      </div>
-                      
-                      {/* Tiny tip indicator below card */}
-                      {item.faceDown ? (
-                        <span className="text-[10px] text-purple-400/80 animate-pulse tracking-wide font-mono flex items-center gap-1">
-                          <CornerDownRight className="w-3 h-3 text-purple-400" /> Clic para revelar
+            {/* Snap-scrolling swipeable container on mobile, grid on desktop */}
+            <div className="w-full max-w-5xl">
+              <div 
+                className={`flex sm:grid gap-6 overflow-x-auto sm:overflow-x-visible snap-x snap-mandatory pb-4 w-full px-4 scroll-smooth max-w-full justify-start sm:justify-center ${
+                  spreadType === 'single' 
+                    ? 'sm:grid-cols-1 sm:max-w-[240px] mx-auto' 
+                    : spreadType === 'three' 
+                      ? 'sm:grid-cols-3' 
+                      : 'grid-cols-2 sm:grid-cols-5'
+                }`}
+              >
+                <AnimatePresence>
+                  {drawnCards.map((item, i) => {
+                    const isRevealed = !item.faceDown;
+                    const isSelected = activeCardIndex === i;
+                    return (
+                      <motion.div
+                        key={item.card.id + i}
+                        id={`revealed-card-container-${i}`}
+                        initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                        animate={{ 
+                          opacity: 1, 
+                          scale: isSelected ? 1.05 : 1, 
+                          y: 0,
+                          borderColor: isSelected ? 'rgba(168,85,247,0.5)' : 'rgba(30,41,59,0.4)'
+                        }}
+                        transition={{ delay: i * 0.05, type: "spring", stiffness: 100 }}
+                        className={`snap-center shrink-0 w-[240px] sm:w-auto flex flex-col items-center gap-4 bg-slate-900/30 p-4 rounded-xl border transition-all ${
+                          isSelected ? 'border-purple-500/50 bg-purple-950/5 shadow-lg shadow-purple-500/5' : 'border-slate-800/40'
+                        }`}
+                      >
+                        <span className="text-xs font-serif tracking-widest text-purple-300/80 uppercase border-b border-purple-500/20 pb-1 w-full text-center truncate px-2">
+                          {getPositionLabel(i)}
                         </span>
-                      ) : (
-                        <button 
-                          onClick={() => setActiveCardIndex(isSelected ? null : i)}
-                          className={`text-xs px-2.5 py-1 rounded-full font-serif border flex items-center gap-1.5 transition-colors ${
-                            isSelected 
-                              ? 'bg-purple-600/20 border-purple-500/40 text-purple-300' 
-                              : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                          }`}
-                        >
-                          <BookOpen className="w-3.5 h-3.5" />
-                          Ver Significado
-                        </button>
-                      )}
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
+                        <div className="w-full max-w-[180px]">
+                          <TarotCardComponent
+                            card={item.card}
+                            deckId={deckId}
+                            traditionId={traditionId}
+                            faceDown={item.faceDown}
+                            onClick={() => handleCardClick(i)}
+                          />
+                        </div>
+                        
+                        {/* Tiny tip indicator below card */}
+                        {item.faceDown ? (
+                          <span className="text-[10px] text-purple-400/80 animate-pulse tracking-wide font-mono flex items-center gap-1">
+                            <CornerDownRight className="w-3 h-3 text-purple-400" /> Clic para revelar
+                          </span>
+                        ) : (
+                          <button 
+                            onClick={() => setActiveCardIndex(isSelected ? null : i)}
+                            className={`text-xs px-2.5 py-1 rounded-full font-serif border flex items-center gap-1.5 transition-colors ${
+                              isSelected 
+                                ? 'bg-purple-600/20 border-purple-500/40 text-purple-300' 
+                                : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                            }`}
+                          >
+                            <BookOpen className="w-3.5 h-3.5" />
+                            Ver Significado
+                          </button>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+
+              {/* Carousel navigation dots on mobile */}
+              {drawnCards.length > 1 && (
+                <div className="flex sm:hidden justify-center gap-2 mt-4 px-4 py-2">
+                  {drawnCards.map((_, dotIdx) => (
+                    <button
+                      key={dotIdx}
+                      onClick={() => {
+                        triggerHaptic(10);
+                        setActiveCardIndex(dotIdx);
+                        const cardEl = document.getElementById(`revealed-card-container-${dotIdx}`);
+                        if (cardEl) {
+                          cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                        }
+                      }}
+                      className={`w-3 h-3 rounded-full transition-all duration-300 border border-purple-500/20 ${
+                        activeCardIndex === dotIdx 
+                          ? 'bg-purple-500 w-6' 
+                          : 'bg-slate-800 hover:bg-slate-700'
+                      }`}
+                      aria-label={`Ver carta ${dotIdx + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Active Card Interpretation Details Section */}
@@ -698,6 +772,7 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
               const info = getInterpretation(activeItem.card, traditionId);
               return (
                 <motion.div 
+                  id="interpretation-section"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="w-full max-w-3xl bg-slate-900 border border-purple-500/20 rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden"

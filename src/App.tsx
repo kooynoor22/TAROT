@@ -8,6 +8,7 @@ import DrawSection from './components/DrawSection';
 import PeopleSection from './components/PeopleSection';
 import HistorySection from './components/HistorySection';
 import StatsSection from './components/StatsSection';
+import { triggerHaptic } from './lib/haptic';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'draw' | 'people' | 'history' | 'stats'>('draw');
@@ -26,6 +27,7 @@ export default function App() {
   }, []);
 
   const handleStartReadingForPerson = (person: Person) => {
+    triggerHaptic(25);
     setPreselectedPerson(person);
     setActiveTab('draw');
   };
@@ -61,7 +63,7 @@ export default function App() {
             </div>
             {user ? (
               <button 
-                onClick={signOutUser}
+                onClick={() => { triggerHaptic(30); signOutUser(); }}
                 className="flex items-center gap-2 px-3 py-2 text-xs font-medium uppercase tracking-wider rounded-md text-slate-400 hover:text-red-400 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
@@ -69,7 +71,7 @@ export default function App() {
               </button>
             ) : (
               <button 
-                onClick={signInWithGoogle}
+                onClick={() => { triggerHaptic(30); signInWithGoogle(); }}
                 className="flex items-center gap-2 px-4 py-2 text-xs font-medium uppercase tracking-wider rounded-md bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/40 transition-colors"
               >
                 <LogIn className="w-4 h-4" />
@@ -89,7 +91,7 @@ export default function App() {
               Inicia sesión con Google para llevar un registro de tus tiradas, gestionar consultantes y visualizar tus estadísticas.
             </p>
             <button 
-                onClick={signInWithGoogle}
+                onClick={() => { triggerHaptic(35); signInWithGoogle(); }}
                 className="flex items-center gap-2 px-6 py-2 text-sm font-medium uppercase tracking-wider rounded-md bg-purple-600 text-white shadow hover:bg-purple-500 transition-colors"
               >
                 <LogIn className="w-4 h-4" />
@@ -119,9 +121,13 @@ export default function App() {
 }
 
 function NavButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+  const handleClick = () => {
+    triggerHaptic(15);
+    onClick();
+  };
   return (
     <button
-      onClick={onClick}
+      onClick={handleClick}
       className={`flex items-center gap-2 px-4 py-2 text-xs font-medium uppercase tracking-wider rounded-md transition-colors whitespace-nowrap ${
         active
           ? 'bg-slate-800 text-purple-300 shadow-sm'

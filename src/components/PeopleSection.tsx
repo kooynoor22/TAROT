@@ -7,12 +7,13 @@ import { tarotDeck } from '../data/tarot';
 import { 
   User as UserIcon, UserPlus, Calendar, Clock, MapPin, FileText, 
   Sparkles, Trash2, Edit3, Plus, X, Save, ArrowRight, CornerDownRight, 
-  BookOpen, HelpCircle 
+  BookOpen, HelpCircle, ArrowLeft 
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import TarotCardComponent from './TarotCard';
 import { motion, AnimatePresence } from 'motion/react';
+import { triggerHaptic } from '../lib/haptic';
 
 interface PeopleSectionProps {
   user: User | null;
@@ -26,6 +27,7 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [selectedPersonReadings, setSelectedPersonReadings] = useState<any[]>([]);
   const [loadingReadings, setLoadingReadings] = useState(false);
+  const [mobileView, setMobileView] = useState<'list' | 'details'>('list');
   
   // Form states
   const [isAdding, setIsAdding] = useState(false);
@@ -51,6 +53,7 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
         const found = data.find(p => p.id === preselectedPersonId);
         if (found) {
           setSelectedPerson(found);
+          setMobileView('details');
         }
       } else if (data.length > 0 && !selectedPerson) {
         setSelectedPerson(data[0]);
@@ -88,6 +91,7 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
     e.preventDefault();
     if (!user || !name.trim()) return;
     setSaving(true);
+    triggerHaptic(30);
     try {
       const personId = await savePerson(
         user.uid,
@@ -105,6 +109,7 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
       setBirthPlace('');
       setNotes('');
       setIsAdding(false);
+      setMobileView('details');
       
       // Refresh & select newly added person
       const data = await getPeople(user.uid);
@@ -123,6 +128,7 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
     e.preventDefault();
     if (!user || !selectedPerson || !name.trim()) return;
     setSaving(true);
+    triggerHaptic(30);
     try {
       await updatePerson(user.uid, selectedPerson.id, {
         name: name.trim(),
@@ -133,6 +139,7 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
       });
       
       setIsEditing(false);
+      setMobileView('details');
       
       // Refresh & update selection
       const data = await getPeople(user.uid);
@@ -148,9 +155,11 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
 
   const handleDelete = async (personId: string) => {
     if (!user || !window.confirm("¿Seguro que deseas eliminar a este consultante y todos sus registros asociados de la lista?")) return;
+    triggerHaptic(40);
     try {
       await deletePerson(user.uid, personId);
       setSelectedPerson(null);
+      setMobileView('list');
       fetchPeople();
     } catch (err) {
       console.error("Error deleting consultant:", err);
@@ -159,12 +168,14 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
 
   const startEdit = () => {
     if (!selectedPerson) return;
+    triggerHaptic(20);
     setName(selectedPerson.name);
     setBirthDate(selectedPerson.birthDate || '');
     setBirthTime(selectedPerson.birthTime || '');
     setBirthPlace(selectedPerson.birthPlace || '');
     setNotes(selectedPerson.notes || '');
     setIsEditing(true);
+    setMobileView('details');
   };
 
   if (!user) {
@@ -190,12 +201,14 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
         {!isAdding && !isEditing && (
           <button
             onClick={() => {
+              triggerHaptic(25);
               setName('');
               setBirthDate('');
               setBirthTime('');
               setBirthPlace('');
               setNotes('');
               setIsAdding(true);
+              setMobileView('details');
             }}
             className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-medium transition-all shadow-md active:scale-95"
           >
@@ -208,7 +221,7 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* LEFT COLUMN: LIST */}
-        <div className="lg:col-span-1 bg-slate-900/40 border border-slate-800 rounded-2xl p-4 h-[calc(100vh-300px)] min-h-[400px] flex flex-col">
+        <div className={`${mobileView === 'list' ? 'flex' : 'hidden lg:flex'} lg:col-span-1 bg-slate-900/40 border border-slate-800 rounded-2xl p-4 h-[calc(100vh-280px)] lg:h-[calc(100vh-300px)] min-h-[400px] flex-col`}>
           <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-widest px-2 pb-3 mb-2 border-b border-slate-800/80 flex items-center justify-between">
             <span>Lista de Consultantes</span>
             <span className="bg-slate-800 text-purple-300 px-2 py-0.5 rounded-full text-[10px] font-mono">{people.length}</span>
@@ -233,9 +246,11 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
                   <button
                     key={p.id}
                     onClick={() => {
+                      triggerHaptic(20);
                       setSelectedPerson(p);
                       setIsAdding(false);
                       setIsEditing(false);
+                      setMobileView('details');
                     }}
                     className={`w-full text-left p-3.5 rounded-xl transition-all flex items-center gap-3 border ${
                       isSelected 
@@ -264,7 +279,21 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
         </div>
 
         {/* RIGHT COLUMN: WORKSPACE (ADD / EDIT / DETAILS) */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={`${mobileView === 'details' ? 'block' : 'hidden lg:block'} lg:col-span-2 space-y-6`}>
+          {/* On mobile: back to list button */}
+          {mobileView === 'details' && (
+            <button
+              onClick={() => {
+                triggerHaptic(15);
+                setIsAdding(false);
+                setIsEditing(false);
+                setMobileView('list');
+              }}
+              className="lg:hidden flex items-center gap-2 text-purple-400 hover:text-purple-300 text-sm font-medium mb-4 active:scale-95 py-2.5 px-4 bg-slate-900 border border-slate-800 rounded-xl w-full justify-center"
+            >
+              <ArrowLeft className="w-4 h-4" /> Volver a la Lista de Consultantes
+            </button>
+          )}
           <AnimatePresence mode="wait">
             
             {/* ADDING FORM */}
@@ -366,15 +395,19 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
                   <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
                     <button
                       type="button"
-                      onClick={() => setIsAdding(false)}
-                      className="px-5 py-2 border border-slate-700 text-slate-300 hover:bg-slate-800 rounded-xl text-sm transition-colors"
+                      onClick={() => {
+                        triggerHaptic(15);
+                        setIsAdding(false);
+                        setMobileView('list');
+                      }}
+                      className="px-5 py-2.5 border border-slate-700 text-slate-300 hover:bg-slate-800 rounded-xl text-sm transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={saving}
-                      className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-55 text-white rounded-xl text-sm font-medium transition-all"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-55 text-white rounded-xl text-sm font-medium transition-all"
                     >
                       <Save className="w-4 h-4" />
                       {saving ? 'Guardando...' : 'Guardar Consultante'}
@@ -480,15 +513,18 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
                   <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
                     <button
                       type="button"
-                      onClick={() => setIsEditing(false)}
-                      className="px-5 py-2 border border-slate-700 text-slate-300 hover:bg-slate-800 rounded-xl text-sm transition-colors"
+                      onClick={() => {
+                        triggerHaptic(15);
+                        setIsEditing(false);
+                      }}
+                      className="px-5 py-2.5 border border-slate-700 text-slate-300 hover:bg-slate-800 rounded-xl text-sm transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={saving}
-                      className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-55 text-white rounded-xl text-sm font-medium transition-all"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-55 text-white rounded-xl text-sm font-medium transition-all"
                     >
                       <Save className="w-4 h-4" />
                       {saving ? 'Guardando...' : 'Guardar Cambios'}
