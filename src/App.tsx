@@ -64,24 +64,24 @@ export default function App() {
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-purple-500/30">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col lg:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 w-full lg:w-auto justify-center lg:justify-start">
+            <div className="w-10 h-10 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
               <MoonStar className="w-5 h-5 text-purple-400" />
             </div>
-            <div>
-              <h1 className="text-xl font-serif text-slate-100 tracking-wide flex items-center gap-2">
+            <div className="text-center lg:text-left">
+              <h1 className="text-xl font-serif text-slate-100 tracking-wide flex items-center justify-center lg:justify-start gap-2">
                 Oráculo del Tarot
                 <Sparkles className="w-4 h-4 text-purple-400/70" />
               </h1>
-              <p className="text-xs text-slate-400 font-medium tracking-widest uppercase">
+              <p className="text-[10px] sm:text-xs text-slate-400 font-medium tracking-widest uppercase">
                 {user ? `Conectado: ${user.displayName || user.email || 'Místico'}` : 'Sintonizando energías...'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-800 overflow-x-auto max-w-full">
+          <div className="flex flex-wrap items-center justify-center lg:justify-end gap-3 w-full lg:w-auto">
+            <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-800 overflow-x-auto max-w-full custom-scrollbar">
               <NavButton active={activeTab === 'draw'} onClick={() => setActiveTab('draw')} icon={<LayoutDashboard className="w-4 h-4" />} label="Tirada" />
               {user && (
                 <NavButton active={activeTab === 'people'} onClick={() => setActiveTab('people')} icon={<Users className="w-4 h-4" />} label="Consultantes" />
@@ -89,50 +89,53 @@ export default function App() {
               <NavButton active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<History className="w-4 h-4" />} label="Historial" />
               <NavButton active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<BarChart3 className="w-4 h-4" />} label="Estadísticas" />
             </div>
-            <button 
-              onClick={handleShare}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium uppercase tracking-wider rounded-md border transition-all duration-300 ${
-                copied 
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                  : 'bg-slate-900/60 text-slate-300 border-slate-800 hover:bg-slate-800/60 hover:text-purple-300 hover:border-purple-500/30'
-              }`}
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  <span>¡Copiado!</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-4 h-4" />
-                  <span>Compartir</span>
-                </>
-              )}
-            </button>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleShare}
+                className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-medium uppercase tracking-wider rounded-md border transition-all duration-300 min-h-[40px] ${
+                  copied 
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                    : 'bg-slate-900/60 text-slate-300 border-slate-800 hover:bg-slate-800/60 hover:text-purple-300 hover:border-purple-500/30'
+                }`}
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>¡Copiado!</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="w-4 h-4" />
+                    <span>Compartir</span>
+                  </>
+                )}
+              </button>
 
-            {user ? (
-              <button 
-                onClick={() => { triggerHaptic(30); signOutUser(); }}
-                className="flex items-center gap-2 px-3 py-2 text-xs font-medium uppercase tracking-wider rounded-md text-slate-400 hover:text-red-400 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Salir</span>
-              </button>
-            ) : (
-              <button 
-                onClick={() => { triggerHaptic(30); signInWithGoogle(); }}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-medium uppercase tracking-wider rounded-md bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/40 transition-colors"
-              >
-                <LogIn className="w-4 h-4" />
-                <span className="hidden sm:inline">Entrar con Google</span>
-              </button>
-            )}
+              {user ? (
+                <button 
+                  onClick={() => { triggerHaptic(30); signOutUser(); }}
+                  className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium uppercase tracking-wider rounded-md text-slate-400 hover:text-red-400 transition-colors min-h-[40px]"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Salir</span>
+                </button>
+              ) : (
+                <button 
+                  onClick={() => { triggerHaptic(30); signInWithGoogle(); }}
+                  className="flex items-center gap-2 px-3.5 py-2.5 text-xs font-medium uppercase tracking-wider rounded-md bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/40 transition-colors min-h-[40px]"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Entrar</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-12">
         {!user && (
           <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-8 text-sm text-purple-200 max-w-2xl mx-auto flex flex-col items-center text-center">
             <p className="font-semibold mb-2 text-purple-300">Conéctate para guardar tu progreso</p>

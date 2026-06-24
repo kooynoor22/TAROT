@@ -94,7 +94,7 @@ export default function HistorySection({ user }: { user: User | null }) {
                 cards.length === 1 
                   ? 'grid-cols-1 max-w-[200px]' 
                   : cards.length === 3 
-                    ? 'grid-cols-3 max-w-3xl' 
+                    ? 'grid-cols-1 sm:grid-cols-3 max-w-3xl' 
                     : 'grid-cols-2 sm:grid-cols-5 max-w-5xl'
               }`}>
                 {cards.map((card: any, i: number) => {
