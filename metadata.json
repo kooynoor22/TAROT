@@ -1,0 +1,6 @@
+{
+  "name": "Galería de Tarot",
+  "description": "Una cuadrícula indexada de las 78 cartas del Tarot.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

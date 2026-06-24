@@ -1,0 +1,36 @@
+{
+  "project_id": "elated-math-ckm1r",
+  "collections": [
+    {
+      "name": "users",
+      "path": "users/{userId}",
+      "rules": [
+        "allow read, write: if request.auth != null && request.auth.uid == userId;"
+      ],
+      "schema": {
+        "type": "object",
+        "properties": {
+          "totalReadings": { "type": "number" },
+          "stats": { "type": "map" }
+        }
+      }
+    },
+    {
+      "name": "readings",
+      "path": "readings/{readingId}",
+      "rules": [
+        "allow read: if request.auth != null && request.auth.uid == resource.data.userId;",
+        "allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;",
+        "allow update, delete: if false;"
+      ],
+      "schema": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string" },
+          "cards": { "type": "array" },
+          "timestamp": { "type": "timestamp" }
+        }
+      }
+    }
+  ]
+}
