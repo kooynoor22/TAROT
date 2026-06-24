@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TarotCard, getDeckForTradition, TRADITIONS, DECKS, getInterpretation } from '../data/tarot';
 import TarotCardComponent from './TarotCard';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Save, Layers, RefreshCw, Zap, Check, HelpCircle, ArrowRight, CornerDownRight, Eye, BookOpen, AlertCircle } from 'lucide-react';
+import { Sparkles, Save, Layers, RefreshCw, Zap, Check, HelpCircle, ArrowRight, CornerDownRight, Eye, BookOpen, AlertCircle, User as UserIcon, X } from 'lucide-react';
 import { User } from 'firebase/auth';
-import { saveReading } from '../lib/firebase';
+import { saveReading, getPeople, Person } from '../lib/firebase';
 
 type Step = 'setup' | 'shuffle' | 'cut' | 'reveal';
 type SpreadType = 'single' | 'three' | 'celtic';
@@ -14,13 +14,47 @@ interface DrawnCardState {
   faceDown: boolean;
 }
 
-export default function DrawSection({ user }: { user: User | null }) {
+interface DrawSectionProps {
+  user: User | null;
+  preselectedPerson?: Person | null;
+  onClearPreselectedPerson?: () => void;
+}
+
+export default function DrawSection({ user, preselectedPerson, onClearPreselectedPerson }: DrawSectionProps) {
   const [step, setStep] = useState<Step>('setup');
   const [traditionId, setTraditionId] = useState<string>('rws');
   const [deckId, setDeckId] = useState<string>(DECKS[0].id);
   const [spreadType, setSpreadType] = useState<SpreadType>('three');
   const [question, setQuestion] = useState<string>('');
   
+  // People/Consultant selection states
+  const [people, setPeople] = useState<Person[]>([]);
+  const [selectedPersonId, setSelectedPersonId] = useState<string>('');
+
+  // Fetch people list if logged in
+  useEffect(() => {
+    if (user) {
+      getPeople(user.uid)
+        .then(data => {
+          setPeople(data);
+        })
+        .catch(err => {
+          console.error("Error loading people in DrawSection:", err);
+        });
+    } else {
+      setPeople([]);
+    }
+  }, [user]);
+
+  // Sync preselected person
+  useEffect(() => {
+    if (preselectedPerson) {
+      setSelectedPersonId(preselectedPerson.id);
+    } else {
+      setSelectedPersonId('');
+    }
+  }, [preselectedPerson]);
+
   // Ritual / Shuffling states
   const [shufflingProgress, setShufflingProgress] = useState(0);
   const [isShuffling, setIsShuffling] = useState(false);
@@ -102,7 +136,15 @@ export default function DrawSection({ user }: { user: User | null }) {
     if (!user || !allFlipped || saved) return;
     setSaving(true);
     try {
-      await saveReading(user.uid, drawnCards.map(c => c.card.id), deckId);
+      const activePerson = people.find(p => p.id === selectedPersonId);
+      await saveReading(
+        user.uid, 
+        drawnCards.map(c => c.card.id), 
+        deckId,
+        activePerson?.id || undefined,
+        activePerson?.name || undefined,
+        question || undefined
+      );
       setSaved(true);
     } catch (e) {
       console.error("Failed to save reading", e);
@@ -218,6 +260,57 @@ export default function DrawSection({ user }: { user: User | null }) {
                   })}
                 </div>
               </div>
+
+              {/* Consultant Selector */}
+              {user && (
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <UserIcon className="w-4 h-4 text-purple-400" />
+                    Consultante de la Lectura
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedPersonId}
+                      onChange={(e) => {
+                        setSelectedPersonId(e.target.value);
+                        if (e.target.value === '' && onClearPreselectedPerson) {
+                          onClearPreselectedPerson();
+                        }
+                      }}
+                      className="flex-1 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500 transition-colors text-sm"
+                    >
+                      <option value="">Para mí / Consulta General</option>
+                      {people.map(p => (
+                        <option key={p.id} value={p.id}>Ficha: {p.name}</option>
+                      ))}
+                    </select>
+                    {selectedPersonId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPersonId('');
+                          if (onClearPreselectedPerson) {
+                            onClearPreselectedPerson();
+                          }
+                        }}
+                        className="px-3 bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 rounded-xl transition-all flex items-center justify-center"
+                        title="Limpiar Selección"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  {selectedPersonId && (() => {
+                    const activePerson = people.find(p => p.id === selectedPersonId);
+                    if (!activePerson) return null;
+                    return (
+                      <p className="text-xs text-purple-300 italic px-1">
+                        Esta lectura se guardará e indexará en el historial de <strong className="font-semibold">{activePerson.name}</strong>.
+                      </p>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* Question Input */}
               <div className="space-y-2">

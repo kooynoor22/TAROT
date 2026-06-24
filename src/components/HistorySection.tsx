@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { User } from 'firebase/auth';
 import { getUserHistory } from '../lib/firebase';
 import { tarotDeck } from '../data/tarot';
-import { Clock, MoonStar } from 'lucide-react';
+import { Clock, MoonStar, User as UserIcon, HelpCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import TarotCardComponent from './TarotCard';
@@ -60,15 +60,35 @@ export default function HistorySection({ user }: { user: User | null }) {
           
           return (
             <div key={reading.id} className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6">
-              <div className="flex items-center gap-2 text-slate-400 border-b border-slate-800 pb-4">
-                <Clock className="w-4 h-4 text-purple-400" />
-                <span className="text-sm font-medium tracking-wide">
-                  {reading.timestamp?.toDate ? format(reading.timestamp.toDate(), "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es }) : 'Reciente'}
-                </span>
-                <span className="text-xs bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded-full ml-auto">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-3">
+                <div className="flex flex-wrap items-center gap-3 text-slate-400 text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-purple-400" />
+                    <span className="font-medium">
+                      {reading.timestamp?.toDate ? format(reading.timestamp.toDate(), "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es }) : 'Reciente'}
+                    </span>
+                  </div>
+                  {reading.personName && (
+                    <div className="flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/20 px-2.5 py-0.5 rounded-full text-purple-300 text-xs">
+                      <UserIcon className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Para: <strong>{reading.personName}</strong></span>
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs bg-slate-800 text-slate-300 border border-slate-700 px-3 py-1 rounded-full self-start sm:self-auto font-serif">
                   {cards.length === 1 ? 'Carta Única' : cards.length === 3 ? 'Tirada de 3 Cartas' : 'Cruz Celta (10 Cartas)'}
                 </span>
               </div>
+              
+              {reading.question && (
+                <div className="bg-slate-950/40 p-3.5 rounded-xl border border-slate-800/60 text-sm text-slate-300 flex items-start gap-2.5">
+                  <HelpCircle className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500">Pregunta o Intención:</span>
+                    <p className="italic font-serif text-purple-200/90">"{reading.question}"</p>
+                  </div>
+                </div>
+              )}
               
               <div className={`grid gap-4 sm:gap-6 mx-auto ${
                 cards.length === 1 

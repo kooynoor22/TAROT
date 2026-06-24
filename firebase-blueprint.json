@@ -16,6 +16,28 @@
       }
     },
     {
+      "name": "people",
+      "path": "people/{personId}",
+      "rules": [
+        "allow read: if request.auth != null && request.auth.uid == resource.data.userId;",
+        "allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;",
+        "allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;"
+      ],
+      "schema": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string" },
+          "name": { "type": "string" },
+          "birthDate": { "type": "string" },
+          "birthTime": { "type": "string" },
+          "birthPlace": { "type": "string" },
+          "notes": { "type": "string" },
+          "createdAt": { "type": "timestamp" }
+        },
+        "required": ["userId", "name"]
+      }
+    },
+    {
       "name": "readings",
       "path": "readings/{readingId}",
       "rules": [
@@ -28,7 +50,11 @@
         "properties": {
           "userId": { "type": "string" },
           "cards": { "type": "array" },
-          "timestamp": { "type": "timestamp" }
+          "timestamp": { "type": "timestamp" },
+          "deckId": { "type": "string" },
+          "personId": { "type": "string" },
+          "personName": { "type": "string" },
+          "question": { "type": "string" }
         }
       }
     }

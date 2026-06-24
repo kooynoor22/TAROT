@@ -1,5 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, query, where, orderBy, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
+import { 
+  getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, query, 
+  where, orderBy, serverTimestamp, updateDoc, increment, deleteDoc 
+} from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged, User, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import config from '../../firebase-applet-config.json';
 
@@ -47,46 +50,208 @@ export const initAuth = (callback: (user: User | null) => void) => {
   });
 };
 
-export const saveReading = async (userId: string, cardIds: string[], deckId: string) => {
-  const readingRef = collection(db, 'readings');
-  await addDoc(readingRef, {
-    userId,
-    cards: cardIds,
-    deckId,
-    timestamp: serverTimestamp()
-  });
+// Error handling helper for Firestore operations
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
 
-  const userRef = doc(db, 'users', userId);
-  
-  // Update stats
-  const updates: Record<string, any> = {
-    totalReadings: increment(1)
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+    },
+    operationType,
+    path
   };
-  cardIds.forEach(cardId => {
-    updates[`stats.${cardId}`] = increment(1);
-  });
-  
-  await updateDoc(userRef, updates);
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+// ---------------- PEOPLE OPERATIONS ----------------
+
+export interface Person {
+  id: string;
+  userId: string;
+  name: string;
+  birthDate?: string;
+  birthTime?: string;
+  birthPlace?: string;
+  notes?: string;
+  createdAt?: any;
+}
+
+export const getPeople = async (userId: string): Promise<Person[]> => {
+  const path = 'people';
+  try {
+    const q = query(
+      collection(db, path),
+      where('userId', '==', userId),
+      orderBy('name', 'asc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...(doc.data() as any)
+    } as Person));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
 };
 
-export const getUserHistory = async (userId: string) => {
-  const q = query(
-    collection(db, 'readings'),
-    where('userId', '==', userId),
-    orderBy('timestamp', 'desc')
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+export const savePerson = async (
+  userId: string, 
+  name: string, 
+  birthDate?: string, 
+  birthTime?: string, 
+  birthPlace?: string, 
+  notes?: string
+): Promise<string> => {
+  const path = 'people';
+  try {
+    const docRef = await addDoc(collection(db, path), {
+      userId,
+      name,
+      birthDate: birthDate || '',
+      birthTime: birthTime || '',
+      birthPlace: birthPlace || '',
+      notes: notes || '',
+      createdAt: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+    throw error;
+  }
+};
+
+export const updatePerson = async (
+  userId: string,
+  personId: string,
+  data: Partial<Omit<Person, 'id' | 'userId' | 'createdAt'>>
+): Promise<void> => {
+  const path = `people/${personId}`;
+  try {
+    const personRef = doc(db, 'people', personId);
+    await updateDoc(personRef, data);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+};
+
+export const deletePerson = async (userId: string, personId: string): Promise<void> => {
+  const path = `people/${personId}`;
+  try {
+    const personRef = doc(db, 'people', personId);
+    await deleteDoc(personRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+};
+
+// ---------------- READINGS WITH PERSON SUPPORT ----------------
+
+export const saveReading = async (
+  userId: string, 
+  cardIds: string[], 
+  deckId: string, 
+  personId?: string, 
+  personName?: string,
+  question?: string
+) => {
+  const path = 'readings';
+  try {
+    const readingRef = collection(db, path);
+    await addDoc(readingRef, {
+      userId,
+      cards: cardIds,
+      deckId,
+      timestamp: serverTimestamp(),
+      personId: personId || null,
+      personName: personName || null,
+      question: question || null
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+
+  const userPath = `users/${userId}`;
+  try {
+    const userRef = doc(db, 'users', userId);
+    
+    // Update stats
+    const updates: Record<string, any> = {
+      totalReadings: increment(1)
+    };
+    cardIds.forEach(cardId => {
+      updates[`stats.${cardId}`] = increment(1);
+    });
+    
+    await updateDoc(userRef, updates);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, userPath);
+  }
+};
+
+export const getUserHistory = async (userId: string, personId?: string) => {
+  const path = 'readings';
+  try {
+    let q;
+    if (personId) {
+      q = query(
+        collection(db, path),
+        where('userId', '==', userId),
+        where('personId', '==', personId),
+        orderBy('timestamp', 'desc')
+      );
+    } else {
+      q = query(
+        collection(db, path),
+        where('userId', '==', userId),
+        orderBy('timestamp', 'desc')
+      );
+    }
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...(doc.data() as any)
+    }));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
 };
 
 export const getUserStats = async (userId: string) => {
-  const userRef = doc(db, 'users', userId);
-  const snap = await getDoc(userRef);
-  if (snap.exists()) {
-    return snap.data();
+  const path = `users/${userId}`;
+  try {
+    const userRef = doc(db, 'users', userId);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      return snap.data();
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return null;
   }
-  return null;
 };
