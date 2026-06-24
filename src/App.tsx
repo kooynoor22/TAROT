@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TarotCard, tarotDeck } from './data/tarot';
 import TarotCardComponent from './components/TarotCard';
-import { Sparkles, MoonStar, History, BarChart3, LayoutDashboard, LogIn, LogOut, Users } from 'lucide-react';
+import { Sparkles, MoonStar, History, BarChart3, LayoutDashboard, LogIn, LogOut, Users, Share2, Check } from 'lucide-react';
 import { initAuth, signInWithGoogle, signOutUser, Person } from './lib/firebase';
 import { User } from 'firebase/auth';
 import DrawSection from './components/DrawSection';
@@ -14,6 +14,34 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'draw' | 'people' | 'history' | 'stats'>('draw');
   const [user, setUser] = useState<User | null>(null);
   const [preselectedPerson, setPreselectedPerson] = useState<Person | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    triggerHaptic(20);
+    const shareData = {
+      title: 'Oráculo del Tarot',
+      text: '¡Consulta el Tarot y lleva un registro místico de tus tiradas!',
+      url: window.location.origin,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        console.log('Share failed or cancelled, falling back to copy:', err);
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(window.location.origin);
+      setCopied(true);
+      triggerHaptic([30, 50]);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
 
   useEffect(() => {
     initAuth((u) => {
@@ -61,6 +89,27 @@ export default function App() {
               <NavButton active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<History className="w-4 h-4" />} label="Historial" />
               <NavButton active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<BarChart3 className="w-4 h-4" />} label="Estadísticas" />
             </div>
+            <button 
+              onClick={handleShare}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium uppercase tracking-wider rounded-md border transition-all duration-300 ${
+                copied 
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                  : 'bg-slate-900/60 text-slate-300 border-slate-800 hover:bg-slate-800/60 hover:text-purple-300 hover:border-purple-500/30'
+              }`}
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span>¡Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4" />
+                  <span>Compartir</span>
+                </>
+              )}
+            </button>
+
             {user ? (
               <button 
                 onClick={() => { triggerHaptic(30); signOutUser(); }}
