@@ -8,6 +8,7 @@ import DrawSection from './components/DrawSection';
 import PeopleSection from './components/PeopleSection';
 import HistorySection from './components/HistorySection';
 import StatsSection from './components/StatsSection';
+import InstallPrompt from './components/InstallPrompt';
 import { triggerHaptic } from './lib/haptic';
 
 export default function App() {
@@ -142,6 +143,9 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* PWA Install Notice */}
+      <InstallPrompt />
     </div>
   );
 }

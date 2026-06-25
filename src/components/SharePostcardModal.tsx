@@ -19,7 +19,7 @@ interface SharePostcardModalProps {
   question?: string;
 }
 
-// Helper to sanitize Tailwind v4 oklch colors before capturing with html2canvas (which crashes on oklch)
+// Helper to sanitize Tailwind v4 oklch/oklab colors before capturing with html2canvas (which crashes on unsupported color functions)
 async function sanitizeStylesheetsForHtml2Canvas() {
   const restorations: Array<{
     element: HTMLStyleElement | HTMLLinkElement;
@@ -31,13 +31,13 @@ async function sanitizeStylesheetsForHtml2Canvas() {
   // 1. Handle <style> elements
   const styleElements = Array.from(document.querySelectorAll('style'));
   for (const styleEl of styleElements) {
-    if (styleEl.textContent && styleEl.textContent.includes('oklch')) {
+    if (styleEl.textContent && (styleEl.textContent.includes('oklch') || styleEl.textContent.includes('oklab'))) {
       restorations.push({
         element: styleEl,
         originalText: styleEl.textContent
       });
-      // Replace oklch(...) with a basic hex/rgb color so html2canvas doesn't crash
-      styleEl.textContent = styleEl.textContent.replace(/oklch\([^)]+\)/g, 'rgb(15, 23, 42)');
+      // Replace oklch(...) and oklab(...) with a basic hex/rgb color so html2canvas doesn't crash
+      styleEl.textContent = styleEl.textContent.replace(/(oklch|oklab)\([^)]+\)/g, 'rgb(15, 23, 42)');
     }
   }
 
@@ -48,8 +48,8 @@ async function sanitizeStylesheetsForHtml2Canvas() {
       const response = await fetch(linkEl.href);
       if (response.ok) {
         let cssText = await response.text();
-        if (cssText.includes('oklch')) {
-          cssText = cssText.replace(/oklch\([^)]+\)/g, 'rgb(15, 23, 42)');
+        if (cssText.includes('oklch') || cssText.includes('oklab')) {
+          cssText = cssText.replace(/(oklch|oklab)\([^)]+\)/g, 'rgb(15, 23, 42)');
           
           const tempStyle = document.createElement('style');
           tempStyle.textContent = cssText;
