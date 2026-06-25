@@ -3,17 +3,114 @@
  * Robust Sound Manager for the Tarot and Lenormand application.
  * 
  * Supports:
- * - Real audio files: /sounds/ambient.mp3, /sounds/shuffle.mp3, /sounds/flip.mp3
+ * - Real audio files with multiple language/name fallbacks (English and Spanish):
+ *   - Ambient: /sounds/ambient.mp3, /sounds/ambiente.mp3, /ambiente.mp3, /ambient.mp3
+ *   - Shuffle: /sounds/shuffle.mp3, /sounds/mezclar.mp3, /sounds/barajar.mp3, /mezclar.mp3, /shuffle.mp3
+ *   - Flip: /sounds/flip.mp3, /sounds/girar.mp3, /sounds/voltear.mp3, /sounds/carta.mp3, /girar.mp3, /flip.mp3
  * - Web Audio API synthesizers as high-fidelity fallbacks when files are not found or not yet uploaded.
  * - Global volume/mute state, defaulting to muted/cancelled at startup as requested.
  * - LocalStorage persistence.
  */
 
+class FallbackAudio {
+  private urls: string[];
+  private currentIndex: number = 0;
+  private audio: HTMLAudioElement | null = null;
+  private volume: number;
+  private loop: boolean;
+  private isPlaying: boolean = false;
+
+  constructor(urls: string[], volume: number = 1.0, loop: boolean = false) {
+    this.urls = urls;
+    this.volume = volume;
+    this.loop = loop;
+    this.initNext();
+  }
+
+  private initNext() {
+    if (this.currentIndex >= this.urls.length) {
+      this.audio = null;
+      return;
+    }
+    const url = this.urls[this.currentIndex];
+    try {
+      this.audio = new Audio(url);
+      this.audio.volume = this.volume;
+      this.audio.loop = this.loop;
+      
+      // If error loading, automatically try the next fallback in list
+      this.audio.onerror = () => {
+        console.warn(`Audio source failed to load: ${url}. Trying next fallback if available.`);
+        this.currentIndex++;
+        this.initNext();
+        if (this.isPlaying && this.audio) {
+          this.play().catch(() => {});
+        }
+      };
+    } catch (e) {
+      console.warn(`Failed to initialize Audio for ${url}:`, e);
+      this.currentIndex++;
+      this.initNext();
+    }
+  }
+
+  play(): Promise<void> {
+    this.isPlaying = true;
+    if (!this.audio) {
+      return Promise.reject(new Error("No audio source available"));
+    }
+    
+    return this.audio.play().catch((err) => {
+      console.warn(`Failed playing ${this.urls[this.currentIndex]}:`, err);
+      // Try next fallback on playback error
+      this.currentIndex++;
+      this.initNext();
+      if (this.audio) {
+        return this.play();
+      } else {
+        throw err;
+      }
+    });
+  }
+
+  pause() {
+    this.isPlaying = false;
+    if (this.audio) {
+      try {
+        this.audio.pause();
+      } catch (e) {
+        // Ignore
+      }
+    }
+  }
+
+  set currentTime(time: number) {
+    if (this.audio) {
+      try {
+        this.audio.currentTime = time;
+      } catch (e) {
+        // Ignore
+      }
+    }
+  }
+
+  get currentTime(): number {
+    return this.audio ? this.audio.currentTime : 0;
+  }
+
+  setLoop(loop: boolean) {
+    this.loop = loop;
+    if (this.audio) {
+      this.audio.loop = loop;
+    }
+  }
+}
+
 class SoundManager {
   private muted: boolean = true;
-  private ambientAudio: HTMLAudioElement | null = null;
-  private shuffleAudio: HTMLAudioElement | null = null;
-  private flipAudio: HTMLAudioElement | null = null;
+  private ambientAudio: FallbackAudio | null = null;
+  private shuffleAudio: FallbackAudio | null = null;
+  private flipAudio: FallbackAudio | null = null;
   private audioContext: AudioContext | null = null;
   private ambientSynthInterval: any = null;
   private isAmbientPlaying: boolean = false;
@@ -30,34 +127,31 @@ class SoundManager {
         this.muted = true;
       }
       
-      // Preload audio files
-      try {
-        this.ambientAudio = new Audio('/sounds/ambient.mp3');
-        if (this.ambientAudio) {
-          this.ambientAudio.loop = true;
-          this.ambientAudio.volume = 0.25;
-        }
-      } catch (e) {
-        console.warn('Ambient audio could not be preloaded:', e);
-      }
+      // Preload audio files with English and Spanish name fallbacks
+      this.ambientAudio = new FallbackAudio([
+        '/sounds/ambient.mp3',
+        '/sounds/ambiente.mp3',
+        '/ambiente.mp3',
+        '/ambient.mp3'
+      ], 0.25, true);
 
-      try {
-        this.shuffleAudio = new Audio('/sounds/shuffle.mp3');
-        if (this.shuffleAudio) {
-          this.shuffleAudio.volume = 0.5;
-        }
-      } catch (e) {
-        console.warn('Shuffle audio could not be preloaded:', e);
-      }
+      this.shuffleAudio = new FallbackAudio([
+        'https://res.cloudinary.com/dd4knv7yn/video/upload/v1782351768/freesound_community-tarot-shuffle-89105.mp3',
+        '/sounds/shuffle.mp3',
+        '/sounds/mezclar.mp3',
+        '/sounds/barajar.mp3',
+        '/mezclar.mp3',
+        '/shuffle.mp3'
+      ], 0.5, false);
 
-      try {
-        this.flipAudio = new Audio('/sounds/flip.mp3');
-        if (this.flipAudio) {
-          this.flipAudio.volume = 0.6;
-        }
-      } catch (e) {
-        console.warn('Flip audio could not be preloaded:', e);
-      }
+      this.flipAudio = new FallbackAudio([
+        '/sounds/flip.mp3',
+        '/sounds/girar.mp3',
+        '/sounds/voltear.mp3',
+        '/sounds/carta.mp3',
+        '/girar.mp3',
+        '/flip.mp3'
+      ], 0.6, false);
     }
   }
 
@@ -153,7 +247,7 @@ class SoundManager {
     // Try playing real file
     if (this.shuffleAudio) {
       this.shuffleAudio.currentTime = 0;
-      this.shuffleAudio.loop = true;
+      this.shuffleAudio.setLoop(true);
       this.shuffleAudio.play().catch(() => {
         this.synthesizeShuffle(durationMs);
       });
