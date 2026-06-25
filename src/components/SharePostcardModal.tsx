@@ -36,6 +36,10 @@ export default function SharePostcardModal({
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'info' | 'success' | 'error'>('info');
+  const [showQuestion, setShowQuestion] = useState(true);
+  const [customText, setCustomText] = useState('');
+  const [modalStep, setModalStep] = useState<'preview' | 'configure'>('preview');
+  const [actionAfterConfig, setActionAfterConfig] = useState<'share' | 'download' | null>(null);
 
   const showToast = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
     setToastMessage(message);
@@ -79,20 +83,21 @@ export default function SharePostcardModal({
     }
   };
 
-  // Pre-generate image on mount with an elegant delay
+  // Re-generate image when preferences change
   useEffect(() => {
-    let active = true;
-    if (isOpen) {
-      setGeneratedImageUrl(null);
-      const timer = setTimeout(async () => {
-        if (active && exportRef.current) {
-          await generatePostcardImage();
-        }
-      }, 700);
-      return () => {
-        active = false;
-        clearTimeout(timer);
-      };
+    setGeneratedImageUrl(null);
+    const timer = setTimeout(async () => {
+      if (isOpen && exportRef.current) {
+        await generatePostcardImage();
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [isOpen, showQuestion, customText]);
+
+  // Clear custom text when modal is closed
+  useEffect(() => {
+    if (!isOpen) {
+      setCustomText('');
     }
   }, [isOpen]);
 
@@ -231,17 +236,26 @@ export default function SharePostcardModal({
         </div>
 
         {/* Question Focus, if supplied */}
-        {question && (
+        {showQuestion && question && (
           <div className="max-w-2xl mx-auto mt-2">
             <p className="text-xs italic text-purple-300 bg-purple-950/20 border border-purple-500/10 py-1.5 px-4 rounded-full inline-block font-serif">
               Pregunta: "{question}"
             </p>
           </div>
         )}
+        
+        {/* Custom Text */}
+        {customText && (
+          <div className="max-w-3xl mx-auto mt-6">
+            <p className="text-2xl text-amber-100 bg-slate-900/60 border border-slate-700/50 py-3 px-6 rounded-xl inline-block font-serif italic shadow-lg">
+              {customText}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Postcard Center: CARDS DISPLAY (Specifically sized for the 1000px square canvas) */}
-      <div className="flex-1 flex items-center justify-center px-4 my-6 z-10">
+      <div className="flex-1 flex items-center justify-center px-4 my-8 z-10">
         {spreadType === 'single' && (
           <div className="flex flex-col items-center gap-4">
             <div className="text-xs uppercase font-serif tracking-[0.2em] text-purple-400 bg-purple-950/30 border border-purple-500/10 px-4 py-1 rounded-full">
@@ -438,86 +452,140 @@ export default function SharePostcardModal({
 
         {/* Modal content body */}
         <div className="p-6 flex flex-col items-center gap-6 overflow-y-auto max-h-[calc(100vh-180px)]">
-          <p className="text-xs text-slate-400 text-center max-w-md leading-relaxed">
-            Hemos diseñado esta postal con estilo fotográfico místico. Puedes <span className="text-purple-300 font-semibold">compartirla directamente</span> a WhatsApp/Instagram o <span className="text-amber-400 font-semibold">descargarla</span> en alta definición.
-          </p>
+          {modalStep === 'preview' && (
+            <>
+              <p className="text-xs text-slate-400 text-center max-w-md leading-relaxed">
+                Hemos diseñado esta postal con estilo fotográfico místico. Puedes <span className="text-purple-300 font-semibold">compartirla directamente</span> a WhatsApp/Instagram o <span className="text-amber-400 font-semibold">descargarla</span> en alta definición.
+              </p>
 
-          {/* PREVIEW CONTAINER */}
-          <div className="w-full flex justify-center items-center py-2 relative min-h-[300px]">
-            {generating && !generatedImageUrl && (
-              <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-4">
-                <div className="relative w-12 h-12">
-                  <div className="absolute inset-0 rounded-full border-2 border-purple-500/20" />
-                  <div className="absolute inset-0 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-xs text-purple-300 font-serif tracking-widest uppercase animate-pulse">Revelando la postal sagrada...</span>
-                  <span className="text-[9px] text-slate-500 font-mono">Sintonizando energías</span>
-                </div>
-              </div>
-            )}
+              {/* PREVIEW CONTAINER */}
+              <div className="w-full flex justify-center items-center py-2 relative min-h-[300px]">
+                {generating && !generatedImageUrl && (
+                  <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-4">
+                    <div className="relative w-12 h-12">
+                      <div className="absolute inset-0 rounded-full border-2 border-purple-500/20" />
+                      <div className="absolute inset-0 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-xs text-purple-300 font-serif tracking-widest uppercase animate-pulse">Revelando la postal sagrada...</span>
+                      <span className="text-[9px] text-slate-500 font-mono">Sintonizando energías</span>
+                    </div>
+                  </div>
+                )}
 
-            {generatedImageUrl ? (
-              // Real image representation for robust tap-and-hold saving on mobile
-              <div className="relative border border-purple-500/20 shadow-2xl rounded-2xl overflow-hidden bg-slate-950 max-w-full w-[420px] aspect-square group">
-                <img 
-                  src={generatedImageUrl} 
-                  alt="Postal de Tarot" 
-                  className="w-full h-full object-contain pointer-events-auto"
-                />
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-950/90 border border-purple-500/20 backdrop-blur-sm px-3 py-1 rounded-full text-[9px] text-slate-300 font-sans flex items-center gap-1.5 shadow-lg select-none opacity-90">
-                  <Info className="w-3 h-3 text-amber-400 shrink-0" />
-                  Celular: Mantén pulsado para guardar directo
-                </div>
+                {generatedImageUrl ? (
+                  <div className="relative border border-purple-500/20 shadow-2xl rounded-2xl overflow-hidden bg-slate-950 max-w-full w-[420px] aspect-square group">
+                    <img 
+                      src={generatedImageUrl} 
+                      alt="Postal de Tarot" 
+                      className="w-full h-full object-contain pointer-events-auto"
+                    />
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-950/90 border border-purple-500/20 backdrop-blur-sm px-3 py-1 rounded-full text-[9px] text-slate-300 font-sans flex items-center gap-1.5 shadow-lg select-none opacity-90">
+                      <Info className="w-3 h-3 text-amber-400 shrink-0" />
+                      Celular: Mantén pulsado para guardar directo
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative shrink-0 border border-purple-500/10 shadow-2xl rounded-lg overflow-hidden bg-slate-950 origin-center scale-[0.45] sm:scale-[0.6] md:scale-[0.75] lg:scale-100 my-[-250px] sm:my-[-160px] md:my-[-90px] lg:my-0" style={{ width: '1000px', height: '1000px' }}>
+                    <div 
+                      className="w-[1000px] h-[1000px] relative bg-slate-950 p-10 flex flex-col justify-between overflow-hidden select-none"
+                      style={{
+                        backgroundImage: 'radial-gradient(circle at 50% 30%, rgba(88, 28, 135, 0.25) 0%, rgba(15, 23, 42, 0) 65%), radial-gradient(circle at 10% 90%, rgba(58, 48, 120, 0.15) 0%, rgba(15, 23, 42, 0) 50%)'
+                      }}
+                    >
+                      {renderPostcardContent()}
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : (
-              // Live HTML Preview (used if generator takes time to start)
-              <div className="relative shrink-0 border border-purple-500/10 shadow-2xl rounded-lg overflow-hidden bg-slate-950 origin-center scale-[0.45] sm:scale-[0.6] md:scale-[0.75] lg:scale-100 my-[-250px] sm:my-[-160px] md:my-[-90px] lg:my-0" style={{ width: '1000px', height: '1000px' }}>
-                <div 
-                  className="w-[1000px] h-[1000px] relative bg-slate-950 p-10 flex flex-col justify-between overflow-hidden select-none"
-                  style={{
-                    backgroundImage: 'radial-gradient(circle at 50% 30%, rgba(88, 28, 135, 0.25) 0%, rgba(15, 23, 42, 0) 65%), radial-gradient(circle at 10% 90%, rgba(58, 48, 120, 0.15) 0%, rgba(15, 23, 42, 0) 50%)'
-                  }}
+
+              {/* Action buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full justify-center pt-10 pb-4 max-w-md">
+                
+                <button
+                  onClick={() => { setModalStep('configure'); setActionAfterConfig('share'); }}
+                  disabled={generating}
+                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium text-sm transition-all bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/30 hover:shadow-purple-700/40 w-full sm:w-auto shrink-0"
                 >
-                  {renderPostcardContent()}
+                  <Share2 className="w-4 h-4" />
+                  Compartir...
+                </button>
+
+                <button
+                  onClick={() => { setModalStep('configure'); setActionAfterConfig('download'); }}
+                  disabled={generating}
+                  className={`flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium text-sm transition-all shadow-lg w-full sm:w-auto shrink-0 bg-slate-800 hover:bg-slate-700 text-amber-200 border border-slate-700/50 hover:border-slate-600`}
+                >
+                  <Download className="w-4 h-4" />
+                  Descargar Foto...
+                </button>
+
+                <button
+                  onClick={() => { triggerHaptic(15); onClose(); }}
+                  className="px-5 py-3 border border-slate-900 hover:bg-slate-900 text-slate-400 hover:text-slate-200 rounded-xl font-medium text-sm transition-colors w-full sm:w-auto"
+                >
+                  Cerrar
+                </button>
+                
+              </div>
+            </>
+          )}
+
+          {modalStep === 'configure' && (
+            <>
+              <h2 className="text-lg font-serif text-slate-100">Configurar Postal</h2>
+              
+              {/* Controls */}
+              <div className="w-full max-w-md bg-slate-900/50 p-4 rounded-xl border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-slate-300 font-mono">Mostrar pregunta</label>
+                  <button 
+                    onClick={() => setShowQuestion(!showQuestion)}
+                    className={`w-10 h-5 rounded-full transition-colors flex items-center p-1 ${showQuestion ? 'bg-purple-600' : 'bg-slate-700'}`}
+                  >
+                    <div className={`w-3 h-3 rounded-full bg-white transition-transform ${showQuestion ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-300 font-mono">Mensaje personalizado (opcional)</label>
+                  <input 
+                    type="text"
+                    value={customText}
+                    onChange={(e) => setCustomText(e.target.value)}
+                    placeholder="Ej: Con mucha luz para este nuevo camino..."
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-purple-500"
+                  />
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 w-full justify-center pt-2 max-w-md">
-            
-            <button
-              onClick={handleShare}
-              disabled={generating}
-              className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium text-sm transition-all bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/30 hover:shadow-purple-700/40 w-full sm:w-auto shrink-0"
-            >
-              <Share2 className="w-4 h-4" />
-              Compartir en WhatsApp / Redes
-            </button>
+              {/* Action buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full justify-center pt-2 max-w-md">
+                
+                <button
+                  onClick={async () => {
+                    setModalStep('preview');
+                    if (actionAfterConfig === 'share') await handleShare();
+                    else await handleDownload();
+                  }}
+                  disabled={generating}
+                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium text-sm transition-all bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/30 hover:shadow-purple-700/40 w-full sm:w-auto shrink-0"
+                >
+                  <Check className="w-4 h-4" />
+                  Generar e {actionAfterConfig === 'share' ? 'Compartir' : 'Descargar'}
+                </button>
 
-            <button
-              onClick={handleDownload}
-              disabled={generating}
-              className={`flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium text-sm transition-all shadow-lg w-full sm:w-auto shrink-0 ${
-                success 
-                  ? 'bg-emerald-500 text-white shadow-emerald-900/30'
-                  : 'bg-slate-800 hover:bg-slate-700 text-amber-200 border border-slate-700/50 hover:border-slate-600'
-              }`}
-            >
-              <Download className="w-4 h-4" />
-              {success ? '¡Guardado!' : 'Descargar Foto'}
-            </button>
+                <button
+                  onClick={() => setModalStep('preview')}
+                  className="px-5 py-3 border border-slate-900 hover:bg-slate-900 text-slate-400 hover:text-slate-200 rounded-xl font-medium text-sm transition-colors w-full sm:w-auto"
+                >
+                  Volver
+                </button>
+                
+              </div>
+            </>
+          )}
 
-            <button
-              onClick={() => { triggerHaptic(15); onClose(); }}
-              className="px-5 py-3 border border-slate-900 hover:bg-slate-900 text-slate-400 hover:text-slate-200 rounded-xl font-medium text-sm transition-colors w-full sm:w-auto"
-            >
-              Cerrar
-            </button>
-            
-          </div>
         </div>
 
       </div>
