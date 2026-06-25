@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { TarotCard } from '../data/tarot';
 import TarotCardComponent from './TarotCard';
 import { X, Download, Sparkles, Check, Image as ImageIcon, Share2, Info } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { triggerHaptic } from '../lib/haptic';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -17,72 +17,6 @@ interface SharePostcardModalProps {
   tarotistName: string;
   consultantName: string;
   question?: string;
-}
-
-// Helper to sanitize Tailwind v4 oklch/oklab colors before capturing with html2canvas (which crashes on unsupported color functions)
-async function sanitizeStylesheetsForHtml2Canvas() {
-  const restorations: Array<{
-    element: HTMLStyleElement | HTMLLinkElement;
-    originalText?: string;
-    wasDisabled?: boolean;
-    tempStyle?: HTMLStyleElement;
-  }> = [];
-
-  // 1. Handle <style> elements
-  const styleElements = Array.from(document.querySelectorAll('style'));
-  for (const styleEl of styleElements) {
-    if (styleEl.textContent && (styleEl.textContent.includes('oklch') || styleEl.textContent.includes('oklab'))) {
-      restorations.push({
-        element: styleEl,
-        originalText: styleEl.textContent
-      });
-      // Replace oklch(...) and oklab(...) with a basic hex/rgb color so html2canvas doesn't crash
-      styleEl.textContent = styleEl.textContent.replace(/(oklch|oklab)\([^)]+\)/g, 'rgb(15, 23, 42)');
-    }
-  }
-
-  // 2. Handle <link rel="stylesheet"> elements
-  const linkElements = Array.from(document.querySelectorAll('link[rel="stylesheet"]')) as HTMLLinkElement[];
-  for (const linkEl of linkElements) {
-    try {
-      const response = await fetch(linkEl.href);
-      if (response.ok) {
-        let cssText = await response.text();
-        if (cssText.includes('oklch') || cssText.includes('oklab')) {
-          cssText = cssText.replace(/(oklch|oklab)\([^)]+\)/g, 'rgb(15, 23, 42)');
-          
-          const tempStyle = document.createElement('style');
-          tempStyle.textContent = cssText;
-          document.head.appendChild(tempStyle);
-          
-          const wasDisabled = linkEl.disabled;
-          linkEl.disabled = true;
-          
-          restorations.push({
-            element: linkEl,
-            wasDisabled,
-            tempStyle
-          });
-        }
-      }
-    } catch (err) {
-      console.warn('Could not sanitize link stylesheet:', linkEl.href, err);
-    }
-  }
-
-  return () => {
-    for (const r of restorations) {
-      if (r.originalText !== undefined) {
-        r.element.textContent = r.originalText;
-      }
-      if (r.tempStyle) {
-        r.tempStyle.remove();
-      }
-      if (r.wasDisabled !== undefined) {
-        (r.element as HTMLLinkElement).disabled = r.wasDisabled;
-      }
-    }
-  };
 }
 
 export default function SharePostcardModal({
@@ -117,33 +51,23 @@ export default function SharePostcardModal({
     if (!exportRef.current) return null;
     
     setGenerating(true);
-    let restoreStylesheets: (() => void) | null = null;
 
     try {
-      try {
-        restoreStylesheets = await sanitizeStylesheetsForHtml2Canvas();
-      } catch (styleErr) {
-        console.warn('Failed to sanitize stylesheets:', styleErr);
-      }
-
       // Wait for layout and images to fully render
       await new Promise((resolve) => setTimeout(resolve, 600));
 
-      const canvas = await html2canvas(exportRef.current, {
-        useCORS: true,
-        allowTaint: true,
-        scale: 2, // 2x high resolution
+      const dataUrl = await toPng(exportRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
         backgroundColor: '#020617', // Slate 950 base color
-        logging: false,
         width: 1000,
         height: 1000,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: 1000,
-        windowHeight: 1000
+        style: {
+          transform: 'scale(1)',
+          transformOrigin: 'top left'
+        }
       });
 
-      const dataUrl = canvas.toDataURL('image/png');
       setGeneratedImageUrl(dataUrl);
       return dataUrl;
     } catch (err) {
@@ -151,9 +75,6 @@ export default function SharePostcardModal({
       showToast('Error al generar la imagen de la postal.', 'error');
       return null;
     } finally {
-      if (restoreStylesheets) {
-        restoreStylesheets();
-      }
       setGenerating(false);
     }
   };
