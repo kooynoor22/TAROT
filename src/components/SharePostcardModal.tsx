@@ -1,7 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { TarotCard } from '../data/tarot';
 import TarotCardComponent from './TarotCard';
-import { X, Download, Sparkles, Check, Image as ImageIcon } from 'lucide-react';
+import { X, Download, Sparkles, Check, Image as ImageIcon, Share2, Info } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { triggerHaptic } from '../lib/haptic';
 import { format } from 'date-fns';
@@ -99,6 +99,81 @@ export default function SharePostcardModal({
   const exportRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'info' | 'success' | 'error'>('info');
+
+  const showToast = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+    const timeoutId = setTimeout(() => {
+      setToastMessage((curr) => curr === message ? null : curr);
+    }, 4500);
+    return timeoutId;
+  };
+
+  const generatePostcardImage = async (): Promise<string | null> => {
+    if (generatedImageUrl) return generatedImageUrl;
+    if (!exportRef.current) return null;
+    
+    setGenerating(true);
+    let restoreStylesheets: (() => void) | null = null;
+
+    try {
+      try {
+        restoreStylesheets = await sanitizeStylesheetsForHtml2Canvas();
+      } catch (styleErr) {
+        console.warn('Failed to sanitize stylesheets:', styleErr);
+      }
+
+      // Wait for layout and images to fully render
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      const canvas = await html2canvas(exportRef.current, {
+        useCORS: true,
+        allowTaint: true,
+        scale: 2, // 2x high resolution
+        backgroundColor: '#020617', // Slate 950 base color
+        logging: false,
+        width: 1000,
+        height: 1000,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 1000,
+        windowHeight: 1000
+      });
+
+      const dataUrl = canvas.toDataURL('image/png');
+      setGeneratedImageUrl(dataUrl);
+      return dataUrl;
+    } catch (err) {
+      console.error('Error generating postcard:', err);
+      showToast('Error al generar la imagen de la postal.', 'error');
+      return null;
+    } finally {
+      if (restoreStylesheets) {
+        restoreStylesheets();
+      }
+      setGenerating(false);
+    }
+  };
+
+  // Pre-generate image on mount with an elegant delay
+  useEffect(() => {
+    let active = true;
+    if (isOpen) {
+      setGeneratedImageUrl(null);
+      const timer = setTimeout(async () => {
+        if (active && exportRef.current) {
+          await generatePostcardImage();
+        }
+      }, 700);
+      return () => {
+        active = false;
+        clearTimeout(timer);
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -126,57 +201,63 @@ export default function SharePostcardModal({
   };
 
   const handleDownload = async () => {
-    if (!exportRef.current || generating) return;
     triggerHaptic(30);
-    setGenerating(true);
-
-    let restoreStylesheets: (() => void) | null = null;
+    let dataUrl = generatedImageUrl;
+    if (!dataUrl) {
+      dataUrl = await generatePostcardImage();
+    }
+    if (!dataUrl) return;
 
     try {
-      // Clean up oklch styles from stylesheets temporarily to prevent html2canvas crashing
-      try {
-        restoreStylesheets = await sanitizeStylesheetsForHtml2Canvas();
-      } catch (styleErr) {
-        console.warn('Failed to sanitize stylesheets:', styleErr);
-      }
-
-      // Wait for any rendering/image decoding to settle
-      await new Promise((resolve) => setTimeout(resolve, 400));
-
-      const canvas = await html2canvas(exportRef.current, {
-        useCORS: true,
-        allowTaint: true,
-        scale: 2, // 2x scale for ultra crisp high-res screenshot (perfect for WhatsApp state/sharing)
-        backgroundColor: '#020617', // Slate 950 base color
-        logging: false,
-        width: 1000,
-        height: 1000,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: 1000,
-        windowHeight: 1000
-      });
-
-      const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
-      
-      // Clean filename
       const cleanName = consultantName.toLowerCase().replace(/[^a-z0-9]/g, '_');
       link.download = `tarot_lectura_${cleanName || 'general'}_${format(new Date(), 'yyyyMMdd')}.png`;
       link.href = dataUrl;
+      
+      // Essential for standard cross-browser download inside iframes
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
 
       setSuccess(true);
       triggerHaptic([40, 60]);
+      showToast('¡Imagen descargada! Si no se inició la descarga, mantén presionada la postal abajo para guardarla directamente.', 'success');
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      console.error('Error generating postcard screenshot:', err);
-    } finally {
-      // Always restore original styles
-      if (restoreStylesheets) {
-        restoreStylesheets();
+      console.error('Failed to trigger automatic download:', err);
+      showToast('Descarga automática bloqueada. Mantén presionada la postal abajo para guardarla.', 'info');
+    }
+  };
+
+  const handleShare = async () => {
+    triggerHaptic(30);
+    let dataUrl = generatedImageUrl;
+    if (!dataUrl) {
+      dataUrl = await generatePostcardImage();
+    }
+    if (!dataUrl) return;
+
+    try {
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const cleanName = consultantName.replace(/[^a-zA-Z0-9]/g, '_') || 'lectura';
+      const file = new File([blob], `tarot_${cleanName}.png`, { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Tirada de Tarot - Jesica Hardoy',
+          text: `✨ Te comparto mi tirada mística con la Tarotista Jesica Hardoy. ¡Mira mis cartas! 🔮`,
+        });
+        triggerHaptic([40, 60]);
+        showToast('¡Compartido con éxito!', 'success');
+      } else {
+        // Fallback for browsers without direct file sharing (like desktop)
+        showToast('La función de compartir directo está disponible en celulares. Descarga la imagen para enviarla por WhatsApp o Instagram.', 'info');
       }
-      setGenerating(false);
+    } catch (err) {
+      console.error('Error sharing image:', err);
+      showToast('No se pudo abrir el menú de compartir. Puedes descargar la imagen y enviarla manualmente.', 'info');
     }
   };
 
@@ -412,6 +493,14 @@ export default function SharePostcardModal({
       {/* Modal Card */}
       <div className="relative w-full max-w-4xl bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden my-8">
         
+        {/* Toast Notification Banner */}
+        {toastMessage && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-mono tracking-wide shadow-2xl animate-bounce bg-slate-900/95 backdrop-blur-md border-purple-500/30 text-purple-300">
+            <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-900 bg-slate-950">
           <div className="flex items-center gap-2">
@@ -429,43 +518,84 @@ export default function SharePostcardModal({
         {/* Modal content body */}
         <div className="p-6 flex flex-col items-center gap-6 overflow-y-auto max-h-[calc(100vh-180px)]">
           <p className="text-xs text-slate-400 text-center max-w-md leading-relaxed">
-            Hemos diseñado esta postal con un estilo de fotografía profesional para tus redes sociales. Presiona el botón de descargar para guardarla con máxima resolución y compartirla en tus Estados o mensajes de WhatsApp.
+            Hemos diseñado esta postal con estilo fotográfico místico. Puedes <span className="text-purple-300 font-semibold">compartirla directamente</span> a WhatsApp/Instagram o <span className="text-amber-400 font-semibold">descargarla</span> en alta definición.
           </p>
 
-          {/* PREVIEW CONTAINER - Scaled down dynamically to fit the screen size */}
-          <div className="w-full flex justify-center items-center overflow-x-auto py-2 scrollbar-none">
-            <div className="relative shrink-0 border border-purple-500/10 shadow-2xl rounded-lg overflow-hidden bg-slate-950 origin-center scale-[0.45] sm:scale-[0.6] md:scale-[0.75] lg:scale-100 my-[-250px] sm:my-[-160px] md:my-[-90px] lg:my-0" style={{ width: '1000px', height: '1000px' }}>
-              <div 
-                className="w-[1000px] h-[1000px] relative bg-slate-950 p-10 flex flex-col justify-between overflow-hidden select-none"
-                style={{
-                  backgroundImage: 'radial-gradient(circle at 50% 30%, rgba(88, 28, 135, 0.25) 0%, rgba(15, 23, 42, 0) 65%), radial-gradient(circle at 10% 90%, rgba(58, 48, 120, 0.15) 0%, rgba(15, 23, 42, 0) 50%)'
-                }}
-              >
-                {renderPostcardContent()}
+          {/* PREVIEW CONTAINER */}
+          <div className="w-full flex justify-center items-center py-2 relative min-h-[300px]">
+            {generating && !generatedImageUrl && (
+              <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-4">
+                <div className="relative w-12 h-12">
+                  <div className="absolute inset-0 rounded-full border-2 border-purple-500/20" />
+                  <div className="absolute inset-0 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-xs text-purple-300 font-serif tracking-widest uppercase animate-pulse">Revelando la postal sagrada...</span>
+                  <span className="text-[9px] text-slate-500 font-mono">Sintonizando energías</span>
+                </div>
               </div>
-            </div>
+            )}
+
+            {generatedImageUrl ? (
+              // Real image representation for robust tap-and-hold saving on mobile
+              <div className="relative border border-purple-500/20 shadow-2xl rounded-2xl overflow-hidden bg-slate-950 max-w-full w-[420px] aspect-square group">
+                <img 
+                  src={generatedImageUrl} 
+                  alt="Postal de Tarot" 
+                  className="w-full h-full object-contain pointer-events-auto"
+                />
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-950/90 border border-purple-500/20 backdrop-blur-sm px-3 py-1 rounded-full text-[9px] text-slate-300 font-sans flex items-center gap-1.5 shadow-lg select-none opacity-90">
+                  <Info className="w-3 h-3 text-amber-400 shrink-0" />
+                  Celular: Mantén pulsado para guardar directo
+                </div>
+              </div>
+            ) : (
+              // Live HTML Preview (used if generator takes time to start)
+              <div className="relative shrink-0 border border-purple-500/10 shadow-2xl rounded-lg overflow-hidden bg-slate-950 origin-center scale-[0.45] sm:scale-[0.6] md:scale-[0.75] lg:scale-100 my-[-250px] sm:my-[-160px] md:my-[-90px] lg:my-0" style={{ width: '1000px', height: '1000px' }}>
+                <div 
+                  className="w-[1000px] h-[1000px] relative bg-slate-950 p-10 flex flex-col justify-between overflow-hidden select-none"
+                  style={{
+                    backgroundImage: 'radial-gradient(circle at 50% 30%, rgba(88, 28, 135, 0.25) 0%, rgba(15, 23, 42, 0) 65%), radial-gradient(circle at 10% 90%, rgba(58, 48, 120, 0.15) 0%, rgba(15, 23, 42, 0) 50%)'
+                  }}
+                >
+                  {renderPostcardContent()}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-4 w-full justify-center pt-2">
+          <div className="flex flex-col sm:flex-row gap-3 w-full justify-center pt-2 max-w-md">
+            
             <button
-              onClick={() => { triggerHaptic(15); onClose(); }}
-              className="px-5 py-2.5 border border-slate-800 hover:bg-slate-900 text-slate-300 rounded-xl font-medium text-sm transition-colors"
+              onClick={handleShare}
+              disabled={generating}
+              className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium text-sm transition-all bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/30 hover:shadow-purple-700/40 w-full sm:w-auto shrink-0"
             >
-              Cerrar
+              <Share2 className="w-4 h-4" />
+              Compartir en WhatsApp / Redes
             </button>
+
             <button
               onClick={handleDownload}
               disabled={generating}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium text-sm transition-all shadow-lg ${
+              className={`flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium text-sm transition-all shadow-lg w-full sm:w-auto shrink-0 ${
                 success 
-                  ? 'bg-emerald-500 text-white shadow-emerald-500/20'
-                  : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20 hover:shadow-purple-500/30'
+                  ? 'bg-emerald-500 text-white shadow-emerald-900/30'
+                  : 'bg-slate-800 hover:bg-slate-700 text-amber-200 border border-slate-700/50 hover:border-slate-600'
               }`}
             >
               <Download className="w-4 h-4" />
-              {generating ? 'Generando Foto...' : success ? '¡Descargado!' : 'Descargar Foto de Tirada'}
+              {success ? '¡Guardado!' : 'Descargar Foto'}
             </button>
+
+            <button
+              onClick={() => { triggerHaptic(15); onClose(); }}
+              className="px-5 py-3 border border-slate-900 hover:bg-slate-900 text-slate-400 hover:text-slate-200 rounded-xl font-medium text-sm transition-colors w-full sm:w-auto"
+            >
+              Cerrar
+            </button>
+            
           </div>
         </div>
 
