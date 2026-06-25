@@ -75,7 +75,7 @@ export default function App() {
                   <Sparkles className="w-4 h-4 text-purple-400/70" />
                 </span>
                 <span className="text-[10px] sm:text-xs font-sans text-amber-400/90 font-semibold bg-amber-500/10 border border-amber-500/25 px-2.5 py-0.5 rounded-full uppercase tracking-wider shrink-0">
-                  Creado para Jesica Hardoy
+                  {user ? (user.displayName || user.email || 'Tarotista') : 'Tarotista Invitado'}
                 </span>
               </h1>
               <p className="text-[10px] sm:text-xs text-slate-400 font-medium tracking-widest uppercase mt-0.5">
@@ -181,7 +181,7 @@ export default function App() {
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-center sm:text-right">
             <span>Creado por <span className="text-slate-400 font-medium">Benjamín Hardoy</span></span>
             <span className="hidden sm:inline text-slate-800">|</span>
-            <span>Para la <span className="text-purple-400/80 font-medium">Tarotista Jesica Hardoy</span></span>
+            <span>Sesión de: <span className="text-purple-400/80 font-medium">{user ? (user.displayName || user.email || 'Tarotista') : 'Invitado'}</span></span>
           </div>
         </div>
       </footer>

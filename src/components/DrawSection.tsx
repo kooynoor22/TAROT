@@ -918,7 +918,7 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
         spreadType={spreadType}
         traditionId={traditionId}
         deckId={deckId}
-        tarotistName={user?.displayName || 'Jesica Hardoy'}
+        tarotistName={user?.displayName || user?.email || 'Tarotista'}
         consultantName={people.find(p => p.id === selectedPersonId)?.name || 'Consulta General'}
         question={question}
       />

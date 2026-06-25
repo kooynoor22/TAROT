@@ -54,7 +54,7 @@ export const initAuth = (callback: (user: User | null) => void) => {
         );
         const qSnap = await getDocs(q);
         if (qSnap.empty) {
-          const name = user.displayName || "Jesica Hardoy (Yo)";
+          const name = user.displayName || user.email || "Tarotista (Yo)";
           await addDoc(peopleRef, {
             userId: user.uid,
             name,
@@ -292,7 +292,7 @@ export const exportUserData = async (userId: string) => {
       version: "1.5",
       backupDate: new Date().toISOString(),
       creator: "Benjamín Hardoy",
-      forTarotist: "Jesica Hardoy",
+      forTarotist: auth.currentUser?.displayName || auth.currentUser?.email || "Tarotista",
       people,
       readings
     };

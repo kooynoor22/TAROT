@@ -104,7 +104,7 @@ export default function SharePostcardModal({
   if (!isOpen) return null;
 
   // Format date elegantly
-  const dateStr = format(new Date(), "dd 'de' MMMM, yyyy", { locale: es });
+  const dateStr = format(new Date(), "dd 'de' MMMM, yyyy - HH:mm 'hs'", { locale: es });
 
   const getPositionLabel = (index: number) => {
     if (spreadType === 'single') return 'Consejo';
@@ -172,8 +172,8 @@ export default function SharePostcardModal({
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: 'Tirada de Tarot - Jesica Hardoy',
-          text: `✨ Te comparto mi tirada mística con la Tarotista Jesica Hardoy. ¡Mira mis cartas! 🔮`,
+          title: `Tirada de Tarot - ${tarotistName}`,
+          text: `✨ Te comparto mi tirada mística con la Tarotista ${tarotistName}. ¡Mira mis cartas! 🔮`,
         });
         triggerHaptic([40, 60]);
         showToast('¡Compartido con éxito!', 'success');
@@ -500,7 +500,7 @@ export default function SharePostcardModal({
               </div>
 
               {/* Action buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 w-full justify-center pt-10 pb-4 max-w-md">
+              <div className="flex flex-col sm:flex-row gap-3 w-full justify-center mt-12 pt-16 pb-6 max-w-md z-40 relative">
                 
                 <button
                   onClick={() => { setModalStep('configure'); setActionAfterConfig('share'); }}
