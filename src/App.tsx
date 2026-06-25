@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TarotCard, tarotDeck } from './data/tarot';
 import TarotCardComponent from './components/TarotCard';
-import { Sparkles, MoonStar, History, BarChart3, LayoutDashboard, LogIn, LogOut, Users } from 'lucide-react';
+import { Sparkles, MoonStar, History, BarChart3, LayoutDashboard, LogIn, LogOut, Users, Volume2, VolumeX } from 'lucide-react';
 import { initAuth, signInWithGoogle, signOutUser, Person } from './lib/firebase';
 import { User } from 'firebase/auth';
 import DrawSection from './components/DrawSection';
@@ -10,12 +10,37 @@ import HistorySection from './components/HistorySection';
 import StatsSection from './components/StatsSection';
 import InstallPrompt from './components/InstallPrompt';
 import { triggerHaptic } from './lib/haptic';
+import { soundManager } from './lib/sound';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'draw' | 'people' | 'history' | 'stats'>('draw');
   const [user, setUser] = useState<User | null>(null);
   const [preselectedPerson, setPreselectedPerson] = useState<Person | null>(null);
+  const [muted, setMuted] = useState(soundManager.getMuted());
 
+  useEffect(() => {
+    // Subscribe to global mute state changes
+    return soundManager.subscribe((isMuted) => {
+      setMuted(isMuted);
+    });
+  }, []);
+
+  useEffect(() => {
+    // Attempt to start ambient audio on first user interaction if sound is unmuted
+    const handleFirstInteraction = () => {
+      if (!soundManager.getMuted()) {
+        soundManager.startAmbient();
+      }
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
+    window.addEventListener('click', handleFirstInteraction);
+    window.addEventListener('touchstart', handleFirstInteraction);
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
+  }, []);
 
   useEffect(() => {
     initAuth((u) => {
@@ -70,7 +95,24 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-2">
-
+              <button
+                onClick={() => {
+                  triggerHaptic(20);
+                  soundManager.setMuted(!muted);
+                }}
+                className={`flex items-center justify-center w-10 h-10 rounded-lg border transition-all ${
+                  muted 
+                    ? 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-900' 
+                    : 'bg-purple-600/20 text-purple-300 border-purple-500/30 hover:bg-purple-600/30 shadow-[0_0_15px_rgba(147,51,234,0.15)]'
+                }`}
+                title={muted ? "Activar Sonido" : "Silenciar"}
+              >
+                {muted ? (
+                  <VolumeX className="w-5 h-5" />
+                ) : (
+                  <Volume2 className="w-5 h-5 animate-pulse" />
+                )}
+              </button>
 
               {user ? (
                 <button 

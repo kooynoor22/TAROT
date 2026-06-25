@@ -8,6 +8,7 @@ export interface TarotCard {
   suit?: 'bastos' | 'copas' | 'espadas' | 'oros';
   value?: string;
   number?: number; // For Lenormand (1-36)
+  imageNumber?: number; // Maps to actual Cloudinary image number
   iconName?: string; // For Lenormand icons
   playingCard?: string; // For Lenormand inserts
 }
@@ -42,16 +43,29 @@ export const DECKS = [
   { id: '1920s-1930s-pam-c', name: '1920s1930sPamC' }
 ];
 
-export function getCloudinaryUrl(cardIndex: number, deckId: string) {
+export function getCloudinaryUrl(cardIndex: number, deckId: string, traditionId?: string, imageNumber?: number) {
   const cloudName = (import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME || 'dd4knv7yn';
+  
+  if (traditionId === 'lenormand') {
+    // If imageNumber is explicitly set, use it, otherwise fall back to card.number
+    // We want to use the specific imageNumber if the user's images are ordered differently.
+    const imageNum = imageNumber !== undefined ? imageNumber : (cardIndex + 1); 
+    const num = imageNum.toString().padStart(2, '0');
+    return `https://res.cloudinary.com/${cloudName}/image/upload/v1782348141/PLen-A-${num}.png`;
+  }
+  
   const fileName = cloudinaryFiles[cardIndex];
   if (!fileName) return '';
   
   return `https://res.cloudinary.com/${cloudName}/image/upload/${encodeURIComponent(fileName)}`;
 }
 
-export function getCloudinaryBackUrl(deckId: string) {
+export function getCloudinaryBackUrl(deckId: string, traditionId?: string) {
   const cloudName = (import.meta as any).env?.VITE_CLOUDINARY_CLOUD_NAME || 'dd4knv7yn';
+  
+  if (traditionId === 'lenormand') {
+    return `https://res.cloudinary.com/${cloudName}/image/upload/v1782348015/dorso.png`;
+  }
     
   return `https://res.cloudinary.com/${cloudName}/image/upload/back.jpg`;
 }

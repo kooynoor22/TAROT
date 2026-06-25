@@ -6,6 +6,7 @@ import { Sparkles, Save, Layers, RefreshCw, Zap, Check, HelpCircle, ArrowRight, 
 import { User } from 'firebase/auth';
 import { saveReading, getPeople, Person } from '../lib/firebase';
 import { triggerHaptic } from '../lib/haptic';
+import { soundManager } from '../lib/sound';
 import SharePostcardModal from './SharePostcardModal';
 
 type Step = 'setup' | 'shuffle' | 'cut' | 'reveal';
@@ -93,11 +94,15 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
     setShufflingProgress(0);
     setShuffleLog('Iniciando Algoritmo de Fisher-Yates...');
     triggerHaptic(30);
+    soundManager.playShuffle(4500); // Play shuffle sound for 4.5 seconds
     
     // Retrieve deck according to tradition
     const sourceDeck = getDeckForTradition(traditionId);
     let currentDeck = [...sourceDeck];
     let i = currentDeck.length - 1;
+    
+    // Calculate interval to distribute shuffling evenly over exactly 4.5 seconds
+    const intervalTime = Math.floor(4500 / (currentDeck.length - 1 || 1));
     
     const interval = setInterval(() => {
       if (i > 0) {
@@ -137,12 +142,13 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
           setStep('cut');
         }, 1200);
       }
-    }, 25); // Fast steps for responsive feeling
+    }, intervalTime);
   };
 
   const handleCardClick = (index: number) => {
     if (drawnCards[index].faceDown) {
       triggerHaptic(25);
+      soundManager.playFlip(); // Play flip sound effect
       setDrawnCards(prev => {
         const next = [...prev];
         next[index].faceDown = false;

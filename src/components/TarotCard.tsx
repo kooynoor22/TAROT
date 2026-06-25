@@ -66,8 +66,8 @@ export default function TarotCardComponent({
   className = '',
   staticMode = false
 }: TarotCardProps) {
-  const imageUrl = getCloudinaryUrl(card.index, deckId);
-  const backUrl = getCloudinaryBackUrl(deckId);
+  const imageUrl = getCloudinaryUrl(card.index, deckId, card.type === 'lenormand' ? 'lenormand' : traditionId, card.imageNumber);
+  const backUrl = getCloudinaryBackUrl(deckId, card.type === 'lenormand' ? 'lenormand' : traditionId);
   const isLenormand = card.type === 'lenormand' || traditionId === 'lenormand';
 
   // Back of card styles based on tradition
@@ -148,57 +148,35 @@ export default function TarotCardComponent({
         {faceDown ? (
           getBackDesign()
         ) : (
-          isLenormand ? (
-            <div className="w-full h-full p-3 flex flex-col justify-between relative bg-[#f9f6ef]">
-              <div className="absolute inset-1 border border-amber-800/10 rounded-lg pointer-events-none" />
-              <div className="flex justify-between items-center z-10">
-                <div className="w-7 h-7 rounded-full bg-[#fcfaf2] border border-amber-800/30 flex items-center justify-center font-serif text-xs font-bold text-amber-950">
-                  {card.number || 1}
-                </div>
-                <div className="text-[10px] px-1.5 py-0.5 rounded bg-[#f5f1e5] border border-stone-300 font-serif font-bold text-stone-700">
-                  {card.playingCard || 'A ♥'}
-                </div>
+          <div className="relative w-full h-full">
+            {imageUrl ? (
+              <img 
+                src={imageUrl} 
+                alt={card.name} 
+                className={`w-full h-full object-cover ${
+                  traditionId === 'marsella' 
+                    ? 'sepia-[0.35] contrast-[1.1] brightness-[0.9] saturate-[1.15]' 
+                    : traditionId === 'egipcio'
+                      ? 'sepia contrast-[1.15] brightness-[0.85] saturate-[0.9] hue-rotate-[5deg]'
+                      : 'brightness-[0.95]'
+                }`}
+                crossOrigin="anonymous"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1633519446059-e3eb6c336b13?q=80&w=600&auto=format&fit=crop';
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 text-xs">
+                Sin imagen
               </div>
-              <div className="flex-1 flex flex-col items-center justify-center py-2 z-10">
-                <LenormandIcon name={card.iconName || 'Compass'} className="w-8 h-8 text-amber-800/85" />
-              </div>
-              <div className="text-center z-10">
-                <h3 className="text-[11px] font-serif font-bold text-amber-950 tracking-wide border-t border-amber-800/10 pt-1">
-                  {card.name}
-                </h3>
-              </div>
-            </div>
-          ) : (
-            <div className="relative w-full h-full">
-              {imageUrl ? (
-                <img 
-                  src={imageUrl} 
-                  alt={card.name} 
-                  className={`w-full h-full object-cover ${
-                    traditionId === 'marsella' 
-                      ? 'sepia-[0.35] contrast-[1.1] brightness-[0.9] saturate-[1.15]' 
-                      : traditionId === 'egipcio'
-                        ? 'sepia contrast-[1.15] brightness-[0.85] saturate-[0.9] hue-rotate-[5deg]'
-                        : 'brightness-[0.95]'
-                  }`}
-                  crossOrigin="anonymous"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1633519446059-e3eb6c336b13?q=80&w=600&auto=format&fit=crop';
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 text-xs">
-                  Sin imagen
-                </div>
-              )}
-              {traditionId === 'marsella' && (
-                <div className="absolute inset-0 bg-amber-900/5 mix-blend-color-burn pointer-events-none" />
-              )}
-              {traditionId === 'egipcio' && (
-                <div className="absolute inset-0 bg-yellow-900/10 mix-blend-color pointer-events-none" />
-              )}
-            </div>
-          )
+            )}
+            {traditionId === 'marsella' && (
+              <div className="absolute inset-0 bg-amber-900/5 mix-blend-color-burn pointer-events-none" />
+            )}
+            {traditionId === 'egipcio' && (
+              <div className="absolute inset-0 bg-yellow-900/10 mix-blend-color pointer-events-none" />
+            )}
+          </div>
         )}
       </div>
     );
@@ -239,78 +217,40 @@ export default function TarotCardComponent({
             transition: 'opacity 0.2s ease-in-out'
           }}
         >
-          {/* Custom rendering for Lenormand deck front */}
-          {isLenormand ? (
-            <div className="w-full h-full p-3 flex flex-col justify-between relative bg-[#f9f6ef]">
-              {/* Subtle background flourishes */}
-              <div className="absolute inset-1 border border-amber-800/10 rounded-lg pointer-events-none" />
-              <div className="absolute inset-1.5 border border-amber-800/5 rounded pointer-events-none" />
-              
-              {/* Top Header Badge */}
-              <div className="flex justify-between items-center z-10">
-                {/* Number */}
-                <div className="w-7 h-7 rounded-full bg-[#fcfaf2] border border-amber-800/30 flex items-center justify-center font-serif text-sm font-semibold text-amber-950 shadow-sm">
-                  {card.number || 1}
-                </div>
-                {/* Playing Card Inserts */}
-                <div className="text-xs px-1.5 py-0.5 rounded bg-[#f5f1e5] border border-stone-300 font-serif font-bold text-stone-700">
-                  {card.playingCard || 'A ♥'}
-                </div>
+          {/* Standard Card Rendering for all traditions including Lenormand */}
+          <div className="relative w-full h-full">
+            {imageUrl ? (
+              <img 
+                src={imageUrl} 
+                alt={card.name} 
+                className={`w-full h-full object-cover pointer-events-none transition-all duration-500 ${
+                  traditionId === 'marsella' 
+                    ? 'sepia-[0.35] contrast-[1.1] brightness-[0.9] saturate-[1.15]' 
+                    : traditionId === 'egipcio'
+                      ? 'sepia contrast-[1.15] brightness-[0.85] saturate-[0.9] hue-rotate-[5deg]'
+                      : 'brightness-[0.95]'
+                }`}
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1633519446059-e3eb6c336b13?q=80&w=600&auto=format&fit=crop';
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 text-xs">
+                Sin imagen
               </div>
+            )}
 
-              {/* Central Symbol Icon Illustration */}
-              <div className="flex-1 flex flex-col items-center justify-center py-4 z-10">
-                <div className="w-16 h-16 rounded-full border border-amber-800/10 bg-amber-500/5 flex items-center justify-center relative shadow-inner">
-                  {/* Sunburst background */}
-                  <div className="absolute inset-0 bg-[radial-gradient(circle,_var(--tw-gradient-stops))] from-amber-500/5 to-transparent animate-pulse" />
-                  <LenormandIcon name={card.iconName || 'Compass'} className="w-9 h-9 text-amber-800/85" />
-                </div>
-              </div>
-
-              {/* Footer text */}
-              <div className="text-center z-10">
-                <span className="text-[10px] font-mono tracking-widest text-amber-800/60 uppercase block mb-0.5">ORÁCULO</span>
-                <h3 className="text-[13px] font-serif font-semibold text-amber-950 tracking-wide border-t border-amber-800/10 pt-1">
-                  {card.name}
-                </h3>
-              </div>
-            </div>
-          ) : (
-            // Standard Tarot Card with Tradition-specific Filter layer
-            <div className="relative w-full h-full">
-              {imageUrl ? (
-                <img 
-                  src={imageUrl} 
-                  alt={card.name} 
-                  className={`w-full h-full object-cover pointer-events-none transition-all duration-500 ${
-                    traditionId === 'marsella' 
-                      ? 'sepia-[0.35] contrast-[1.1] brightness-[0.9] saturate-[1.15]' 
-                      : traditionId === 'egipcio'
-                        ? 'sepia contrast-[1.15] brightness-[0.85] saturate-[0.9] hue-rotate-[5deg]'
-                        : 'brightness-[0.95]'
-                  }`}
-                  crossOrigin="anonymous"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1633519446059-e3eb6c336b13?q=80&w=600&auto=format&fit=crop';
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 text-xs">
-                  Sin imagen
-                </div>
-              )}
-
-              {/* Overlays */}
-              {traditionId === 'marsella' && (
-                <div className="absolute inset-0 bg-amber-900/5 mix-blend-color-burn pointer-events-none border border-amber-900/20" />
-              )}
-              {traditionId === 'egipcio' && (
-                <div className="absolute inset-0 bg-yellow-900/10 mix-blend-color pointer-events-none border border-yellow-800/30" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-transparent to-indigo-500/0 group-hover:from-purple-500/15 group-hover:to-indigo-500/15 pointer-events-none transition-all duration-500" />
-            </div>
-          )}
+            {/* Overlays */}
+            {traditionId === 'marsella' && (
+              <div className="absolute inset-0 bg-amber-900/5 mix-blend-color-burn pointer-events-none border border-amber-900/20" />
+            )}
+            {traditionId === 'egipcio' && (
+              <div className="absolute inset-0 bg-yellow-900/10 mix-blend-color pointer-events-none border border-yellow-800/30" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-transparent to-indigo-500/0 group-hover:from-purple-500/15 group-hover:to-indigo-500/15 pointer-events-none transition-all duration-500" />
+          </div>
         </div>
 
         {/* Back of card */}
