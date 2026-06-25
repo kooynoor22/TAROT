@@ -129,28 +129,25 @@ class SoundManager {
       
       // Preload audio files with English and Spanish name fallbacks
       this.ambientAudio = new FallbackAudio([
+        'https://res.cloudinary.com/dd4knv7yn/video/upload/v1782351768/samuelfjohanns-superspacy-atmosphere-106826.mp3',
+        'https://res.cloudinary.com/dd4knv7yn/video/upload/v1782351768/freesound_community-mystic-1-93980.mp3',
+        'https://res.cloudinary.com/dd4knv7yn/video/upload/v1782351768/fidelfortune-beauty-woman-voice-ancient-chant-mystic-205225.mp3',
         '/sounds/ambient.mp3',
-        '/sounds/ambiente.mp3',
-        '/ambiente.mp3',
-        '/ambient.mp3'
+        '/sounds/ambiente.mp3'
       ], 0.25, true);
 
       this.shuffleAudio = new FallbackAudio([
         'https://res.cloudinary.com/dd4knv7yn/video/upload/v1782351768/freesound_community-tarot-shuffle-89105.mp3',
         '/sounds/shuffle.mp3',
-        '/sounds/mezclar.mp3',
-        '/sounds/barajar.mp3',
-        '/mezclar.mp3',
-        '/shuffle.mp3'
+        '/sounds/mezclar.mp3'
       ], 0.5, false);
 
       this.flipAudio = new FallbackAudio([
+        'https://res.cloudinary.com/dd4knv7yn/video/upload/v1782351768/universfield-magic-03-278824.mp3',
+        'https://res.cloudinary.com/dd4knv7yn/video/upload/v1782351768/humordome-spell-aura-magical-sound-effect-451421.mp3',
+        'https://res.cloudinary.com/dd4knv7yn/video/upload/v1782351767/universfield-enchanted-spell-casting-229208.mp3',
         '/sounds/flip.mp3',
-        '/sounds/girar.mp3',
-        '/sounds/voltear.mp3',
-        '/sounds/carta.mp3',
-        '/girar.mp3',
-        '/flip.mp3'
+        '/sounds/girar.mp3'
       ], 0.6, false);
     }
   }
