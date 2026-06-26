@@ -8,6 +8,7 @@ import { saveReading, getPeople, Person } from '../lib/firebase';
 import { triggerHaptic } from '../lib/haptic';
 import { soundManager } from '../lib/sound';
 import SharePostcardModal from './SharePostcardModal';
+import AiReportModal from './AiReportModal';
 
 type Step = 'setup' | 'shuffle' | 'cut' | 'reveal';
 type SpreadType = 'single' | 'three' | 'celtic';
@@ -87,6 +88,7 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
   // Active card details to inspect
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   // Fisher-Yates Shuffle Algorithm with visual simulation
   const performFisherYatesShuffle = () => {
@@ -230,6 +232,7 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
     setShufflingProgress(0);
     setQuestion('');
     setActiveCardIndex(null);
+    setIsAiModalOpen(false);
   };
 
   const getSpreadInfo = () => {
@@ -884,10 +887,20 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
               {allFlipped && (
                 <button
                   onClick={() => { triggerHaptic(20); setIsShareModalOpen(true); }}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-full font-medium transition-all text-sm bg-gradient-to-r from-amber-500/20 to-purple-600/20 hover:from-amber-500/30 hover:to-purple-600/30 text-amber-300 border border-amber-500/30 hover:border-amber-400/50 shadow-lg shadow-amber-500/5 animate-bounce-slow"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-full font-medium transition-all text-sm bg-gradient-to-r from-amber-500/10 to-purple-600/10 hover:from-amber-500/20 hover:to-purple-600/20 text-amber-300 border border-amber-500/25 hover:border-amber-400/40 shadow-lg shadow-amber-500/5"
                 >
                   <Camera className="w-4 h-4 text-amber-400" />
                   Descargar Postal (Foto)
+                </button>
+              )}
+
+              {allFlipped && (
+                <button
+                  onClick={() => { triggerHaptic(25); setIsAiModalOpen(true); }}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold text-slate-950 transition-all text-sm bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-350 hover:to-amber-550 shadow-lg shadow-amber-500/20 cursor-pointer animate-pulse-slow"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Generar Informe
                 </button>
               )}
               
@@ -907,7 +920,7 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
               )}
             </div>
           </motion.div>
-        )}
+         )}
 
       </AnimatePresence>
 
@@ -921,6 +934,18 @@ export default function DrawSection({ user, preselectedPerson, onClearPreselecte
         tarotistName={user?.displayName || user?.email || 'Tarotista'}
         consultantName={people.find(p => p.id === selectedPersonId)?.name || 'Consulta General'}
         question={question}
+      />
+
+      <AiReportModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        drawnCards={drawnCards}
+        spreadType={spreadType}
+        question={question}
+        consultantName={people.find(p => p.id === selectedPersonId)?.name || 'Consulta General'}
+        tarotistName={user?.displayName || user?.email || 'Tarotista'}
+        traditionName={TRADITIONS.find(t => t.id === traditionId)?.name || 'Rider-Waite-Smith'}
+        deckName={DECKS.find(d => d.id === deckId)?.name || 'Mazo Tarot'}
       />
     </div>
   );

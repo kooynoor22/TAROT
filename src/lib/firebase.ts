@@ -123,6 +123,7 @@ export interface Person {
   birthTime?: string;
   birthPlace?: string;
   notes?: string;
+  evolution?: string;
   createdAt?: any;
   isSelf?: boolean;
 }

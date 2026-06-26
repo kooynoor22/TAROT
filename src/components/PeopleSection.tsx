@@ -7,7 +7,7 @@ import { tarotDeck } from '../data/tarot';
 import { 
   User as UserIcon, UserPlus, Calendar, Clock, MapPin, FileText, 
   Sparkles, Trash2, Edit3, Plus, X, Save, ArrowRight, CornerDownRight, 
-  BookOpen, HelpCircle, ArrowLeft 
+  BookOpen, HelpCircle, ArrowLeft, Scroll, Copy, Download, Check, Share2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -39,6 +39,147 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
   const [notes, setNotes] = useState('');
   
   const [saving, setSaving] = useState(false);
+
+  // Client Evolution states
+  const [isEditingEvolution, setIsEditingEvolution] = useState(false);
+  const [evolutionText, setEvolutionText] = useState('');
+  const [savingEvolution, setSavingEvolution] = useState(false);
+  const [copiedEvolution, setCopiedEvolution] = useState(false);
+
+  useEffect(() => {
+    if (selectedPerson) {
+      setEvolutionText(selectedPerson.evolution || '');
+      setIsEditingEvolution(false);
+    } else {
+      setEvolutionText('');
+    }
+  }, [selectedPerson]);
+
+  const handleSaveEvolution = async () => {
+    if (!user || !selectedPerson) return;
+    setSavingEvolution(true);
+    triggerHaptic(30);
+    try {
+      await updatePerson(user.uid, selectedPerson.id, {
+        evolution: evolutionText
+      });
+      setSelectedPerson(prev => prev ? { ...prev, evolution: evolutionText } : null);
+      setPeople(prev => prev.map(p => p.id === selectedPerson.id ? { ...p, evolution: evolutionText } : p));
+      setIsEditingEvolution(false);
+    } catch (err) {
+      console.error("Error saving evolution details:", err);
+    } finally {
+      setSavingEvolution(false);
+    }
+  };
+
+  const handleCopyEvolutionReport = () => {
+    if (!selectedPerson) return;
+    triggerHaptic(20);
+    
+    const tarotistName = user?.displayName || user?.email || 'Tarotista';
+    const birthStr = selectedPerson.birthDate 
+      ? format(new Date(selectedPerson.birthDate + 'T12:00:00'), "d 'de' MMMM, yyyy", { locale: es })
+      : 'No especificada';
+    const dateReport = format(new Date(), "dd/MM/yyyy HH:mm", { locale: es });
+    
+    const recentReadingsText = selectedPersonReadings.slice(0, 3).map(r => {
+      const rDate = r.timestamp?.toDate 
+        ? format(r.timestamp.toDate(), "dd/MM/yyyy", { locale: es }) 
+        : 'Reciente';
+      const numCards = r.cards?.length || 0;
+      const spreadName = numCards === 1 ? 'Consejo' : numCards === 3 ? 'Pasado-Presente-Futuro' : 'Cruz Celta';
+      const questionText = r.question ? `\n   Pregunta: "${r.question}"` : '';
+      return `• ${rDate} - Tirada ${spreadName}${questionText}`;
+    }).join('\n');
+
+    const report = `✦ ━━━━━━━━━━━━━━━━━━━━━━━━━ ✦
+🔮 INFORME DE EVOLUCIÓN TERAPÉUTICA 🔮
+✦ ━━━━━━━━━━━━━━━━━━━━━━━━━ ✦
+
+👤 CONSULTANTE: ${selectedPerson.name}
+📅 NACIMIENTO: ${birthStr}
+✍️ TAROTISTA: ${tarotistName}
+📅 EMISIÓN: ${dateReport} hs
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌟 SÍNTESIS Y EVOLUCIÓN:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${evolutionText || 'Sin anotaciones de evolución cargadas aún.'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 HISTORIAL RECIENTE DE TIRADAS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${recentReadingsText || 'No se registran lecturas en este periodo.'}
+
+✦ Que la luz de los arcanos guíe tu camino ✦
+✦ Creado en tu Galería de Tarot ✦`;
+
+    navigator.clipboard.writeText(report).then(() => {
+      setCopiedEvolution(true);
+      setTimeout(() => setCopiedEvolution(false), 3000);
+    });
+  };
+
+  const handleDownloadEvolutionReport = () => {
+    if (!selectedPerson) return;
+    triggerHaptic(25);
+    
+    const tarotistName = user?.displayName || user?.email || 'Tarotista';
+    const birthStr = selectedPerson.birthDate 
+      ? format(new Date(selectedPerson.birthDate + 'T12:00:00'), "d 'de' MMMM, yyyy", { locale: es })
+      : 'No especificada';
+    const dateReport = format(new Date(), "dd/MM/yyyy HH:mm", { locale: es });
+    
+    const recentReadingsText = selectedPersonReadings.slice(0, 5).map(r => {
+      const rDate = r.timestamp?.toDate 
+        ? format(r.timestamp.toDate(), "dd/MM/yyyy", { locale: es }) 
+        : 'Reciente';
+      const numCards = r.cards?.length || 0;
+      const spreadName = numCards === 1 ? 'Consejo' : numCards === 3 ? 'Temporal (3)' : 'Cruz Celta (10)';
+      const questionText = r.question ? `\n   Pregunta: "${r.question}"` : '';
+      return `* [${rDate}] Tirada ${spreadName}${questionText}`;
+    }).join('\n');
+
+    const report = `✦ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✦
+         REPORTE DE EVOLUCIÓN DEL CONSULTANTE
+✦ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✦
+
+INFORMACIÓN DEL CONSULTANTE:
+Nombre: ${selectedPerson.name}
+Fecha de Nacimiento: ${birthStr}
+Lugar de Nacimiento: ${selectedPerson.birthPlace || 'No especificado'}
+Hora: ${selectedPerson.birthTime ? selectedPerson.birthTime + ' hs' : 'No especificada'}
+
+INFORMACIÓN METAFÍSICA:
+Tarotista: ${tarotistName}
+Fecha del Reporte: ${dateReport} hs
+
+=============================================================
+📜 SÍNTESIS DE EVOLUCIÓN ESPIRITUAL Y SEGUIMIENTO:
+=============================================================
+${evolutionText || 'Sin anotaciones registradas aún.'}
+
+=============================================================
+🔮 HISTORIAL DE TIRADAS CONSOLIDADAS:
+=============================================================
+${recentReadingsText || 'No se registran tiradas para este consultante.'}
+
+-------------------------------------------------------------
+✦ Que la sabiduría ancestral de los Arcanos ilumine tu sendero ✦
+Generado de forma segura en Galería de Tarot.
+-------------------------------------------------------------`;
+
+    const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Evolucion_${selectedPerson.name.replace(/\s+/g, '_')}_Tarot.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // Load people list
   const fetchPeople = async () => {
@@ -646,6 +787,131 @@ export default function PeopleSection({ user, onStartReadingForPerson, preselect
                       </button>
                     </div>
                   </div>
+                </div>
+
+                {/* Evolution & Tracking Section */}
+                <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
+                  
+                  {/* Title & Actions */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/85 pb-4">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono tracking-widest text-amber-400 uppercase">Seguimiento y Progreso</span>
+                      <h3 className="text-lg font-serif text-slate-100 flex items-center gap-2">
+                        <Scroll className="w-5 h-5 text-amber-400 shrink-0" />
+                        Evolución del Consultante
+                      </h3>
+                    </div>
+                    
+                    {!isEditingEvolution && (
+                      <div className="flex flex-wrap gap-2.5">
+                        <button
+                          onClick={() => { triggerHaptic(20); setIsEditingEvolution(true); }}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-750 text-amber-200 hover:text-amber-100 border border-slate-700/50 hover:border-slate-600 rounded-xl text-xs font-medium transition-all"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          Redactar Evolución
+                        </button>
+                        
+                        {evolutionText && (
+                          <>
+                            <button
+                              onClick={handleCopyEvolutionReport}
+                              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-purple-950/40 hover:bg-purple-900/30 text-purple-300 hover:text-purple-200 border border-purple-500/10 rounded-xl text-xs font-medium transition-all"
+                              title="Copiar informe completo para enviar por WhatsApp"
+                            >
+                              {copiedEvolution ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span className="text-emerald-400">¡Copiado!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5" />
+                                  Copiar para WhatsApp
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              onClick={handleDownloadEvolutionReport}
+                              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-950/40 hover:bg-slate-900/40 text-slate-300 hover:text-slate-200 border border-slate-800 rounded-xl text-xs font-medium transition-all"
+                              title="Descargar archivo de evolución"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              Exportar Reporte
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Body Text / Editor */}
+                  {isEditingEvolution ? (
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                          Bitácora de Sesiones, Cambios Energéticos e Integración
+                        </label>
+                        <p className="text-[11px] text-slate-500 leading-normal">
+                          Escribe de forma detallada la evolución de {selectedPerson.name}. Describe cómo ha integrado los arcanos anteriores, qué cambios notas en su consulta y tu guía profesional de tarot para su proceso actual.
+                        </p>
+                        <textarea
+                          rows={8}
+                          value={evolutionText}
+                          onChange={(e) => setEvolutionText(e.target.value)}
+                          placeholder="Escribe aquí toda la evolución... Ej: 'Tras 3 tiradas se observa una notable evolución desde el bloqueo emocional inicial (Cinco de Copas) hacia una fase de reconexión consciente (La Templanza). La consultante manifiesta mayor receptividad y paz al procesar la situación familiar analizada.'"
+                          className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-2xl px-4 py-3.5 focus:outline-none focus:border-amber-500 transition-colors text-sm font-sans leading-relaxed shadow-inner"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic(15);
+                            setEvolutionText(selectedPerson.evolution || '');
+                            setIsEditingEvolution(false);
+                          }}
+                          className="px-4 py-2 border border-slate-700 text-slate-400 hover:bg-slate-800 rounded-xl text-xs font-medium transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          disabled={savingEvolution}
+                          onClick={handleSaveEvolution}
+                          className="flex items-center gap-1.5 px-4.5 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-55 text-slate-950 font-semibold rounded-xl text-xs transition-all shadow-md"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          {savingEvolution ? 'Guardando...' : 'Guardar Evolución'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {evolutionText ? (
+                        <div className="bg-slate-950/35 border border-slate-800/60 rounded-2xl p-5 sm:p-6 shadow-inner">
+                          <p className="text-sm text-slate-200 leading-relaxed font-sans whitespace-pre-wrap">
+                            {evolutionText}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-950/20 border border-slate-850 border-dashed rounded-2xl p-8 text-center space-y-3">
+                          <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                            No has registrado anotaciones de evolución para {selectedPerson.name} todavía. Lleva un registro detallado de su proceso terapéutico y espiritual para exportar cuando desees.
+                          </p>
+                          <button
+                            onClick={() => { triggerHaptic(20); setIsEditingEvolution(true); }}
+                            className="inline-flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 font-serif font-semibold hover:underline"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Redactar Primera Evolución
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Historic readings for this person */}
