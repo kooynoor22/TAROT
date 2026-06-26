@@ -1,10 +1,77 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 
 dotenv.config();
+
+function robustParseJson(text: string): any {
+  let cleanText = text.trim();
+  
+  // 1. If wrapped in markdown block, extract it
+  if (cleanText.includes("```")) {
+    const match = cleanText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (match && match[1]) {
+      cleanText = match[1].trim();
+    }
+  }
+  
+  // 2. Find the first '{' and last '}'
+  const startIdx = cleanText.indexOf("{");
+  const endIdx = cleanText.lastIndexOf("}");
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    cleanText = cleanText.substring(startIdx, endIdx + 1);
+  }
+  
+  try {
+    return JSON.parse(cleanText);
+  } catch (err: any) {
+    console.warn("Standard JSON.parse failed. Attempting to repair common formatting errors...", err.message);
+    
+    // Attempt basic repairs for unescaped newlines and common issues
+    try {
+      let repaired = cleanText;
+      
+      // Replace raw newlines within quotes with "\n"
+      let inString = false;
+      let escapeNext = false;
+      const resultChars = [];
+      for (let i = 0; i < repaired.length; i++) {
+        const char = repaired[i];
+        if (escapeNext) {
+          resultChars.push(char);
+          escapeNext = false;
+          continue;
+        }
+        if (char === '\\') {
+          resultChars.push(char);
+          escapeNext = true;
+          continue;
+        }
+        if (char === '"') {
+          inString = !inString;
+          resultChars.push(char);
+          continue;
+        }
+        if (inString && (char === '\n' || char === '\r')) {
+          resultChars.push('\\n');
+        } else {
+          resultChars.push(char);
+        }
+      }
+      repaired = resultChars.join("");
+      
+      // Clean up trailing commas in objects/arrays (e.g., [1, 2, ] -> [1, 2])
+      repaired = repaired.replace(/,(\s*[\]}])/g, "$1");
+      
+      return JSON.parse(repaired);
+    } catch (repairErr: any) {
+      console.error("Repair parsing also failed:", repairErr.message);
+      throw new Error(`JSON malformado recibido del modelo: ${err.message}. Texto original: ${text.substring(0, 100)}...`);
+    }
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -126,6 +193,42 @@ Genera una interpretación mística y profesional profunda para cada carta en el
           config: {
             systemInstruction: systemPrompt,
             responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                introduccion: {
+                  type: Type.STRING,
+                  description: "Un párrafo poético y místico de bienvenida al consultante, sintonizando con su energía, el/la tarotista y su consulta."
+                },
+                analisisCartas: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      carta: {
+                        type: Type.STRING,
+                        description: "Nombre de la carta (incluyendo si salió invertida o al derecho)"
+                      },
+                      significado: {
+                        type: Type.STRING,
+                        description: "Interpretación detallada de esta carta en su posición, explicando su simbología mística y cómo influye en el consultante."
+                      }
+                    },
+                    required: ["carta", "significado"]
+                  },
+                  description: "Lista de cartas analizadas en la tirada"
+                },
+                sintesis: {
+                  type: Type.STRING,
+                  description: "Una síntesis integrativa de toda la tirada que conecta todas las cartas."
+                },
+                consejoMagico: {
+                  type: Type.STRING,
+                  description: "Un consejo práctico, ritual o meditación mística sugerido con base en los arcanos."
+                }
+              },
+              required: ["introduccion", "analisisCartas", "sintesis", "consejoMagico"]
+            },
             temperature: 0.85,
           },
         });
@@ -137,13 +240,7 @@ Genera una interpretación mística y profesional profunda para cada carta en el
         throw new Error("No se pudo obtener una respuesta válida del oráculo.");
       }
 
-      // Limpiar posibles bloques de código markdown de la respuesta de texto si el modelo los incluyó
-      let cleanText = responseText.trim();
-      if (cleanText.startsWith("```")) {
-        cleanText = cleanText.replace(/^```json\s*/, "").replace(/```$/, "").trim();
-      }
-
-      const reportData = JSON.parse(cleanText);
+      const reportData = robustParseJson(responseText);
       res.json(reportData);
 
     } catch (err: any) {
