@@ -89,7 +89,7 @@ export default function App() {
 
           <div className="flex flex-wrap items-center justify-center lg:justify-end gap-3 w-full lg:w-auto">
             <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-800 overflow-x-auto max-w-full custom-scrollbar">
-              <NavButton active={activeTab === 'draw'} onClick={() => setActiveTab('draw')} icon={<LayoutDashboard className="w-4 h-4" />} label="Tirada" />
+              <NavButton active={activeTab === 'draw'} onClick={() => { setActiveTab('draw'); setShowVideo(true); }} icon={<LayoutDashboard className="w-4 h-4" />} label="Tirada" />
               {user && (
                 <NavButton active={activeTab === 'people'} onClick={() => setActiveTab('people')} icon={<Users className="w-4 h-4" />} label="Consultantes" />
               )}
@@ -141,7 +141,7 @@ export default function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-12">
-        {user && showVideo && (
+        {user && showVideo && activeTab === 'draw' && (
           <div className="max-w-3xl mx-auto mb-8 bg-slate-900/60 border border-purple-500/20 rounded-2xl p-4 sm:p-6 shadow-2xl backdrop-blur-sm relative overflow-hidden">
             <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
               <h3 className="text-base sm:text-lg font-serif text-purple-300 flex items-center gap-2">
@@ -154,10 +154,11 @@ export default function App() {
                   setShowVideo(false);
                   localStorage.setItem('tarot_intro_video_dismissed', 'true');
                 }}
-                className="p-1.5 rounded-full hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-serif tracking-wide text-purple-300 hover:text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 rounded-full transition-all"
                 title="Ocultar video"
               >
-                <X className="w-5 h-5" />
+                <span>Ocultar video</span>
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
             <div className="aspect-video w-full rounded-2xl overflow-hidden border-[10px] border-amber-950/90 bg-slate-950 relative shadow-[0_0_50px_rgba(245,158,11,0.25)] ring-4 ring-amber-500/20">
@@ -171,6 +172,22 @@ export default function App() {
                 style={{ border: 0 }}
               />
             </div>
+          </div>
+        )}
+
+        {user && !showVideo && activeTab === 'draw' && (
+          <div className="flex justify-center mb-8">
+            <button
+              onClick={() => {
+                triggerHaptic(15);
+                setShowVideo(true);
+                localStorage.removeItem('tarot_intro_video_dismissed');
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 text-xs font-serif tracking-wider uppercase rounded-full bg-gradient-to-r from-purple-900/40 to-slate-900 border border-purple-500/30 hover:border-purple-500/60 text-purple-300 hover:text-purple-100 transition-all shadow-[0_0_15px_rgba(147,51,234,0.1)] hover:shadow-[0_0_25px_rgba(147,51,234,0.25)]"
+            >
+              <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
+              <span>Mostrar Video de Bienvenida</span>
+            </button>
           </div>
         )}
 
