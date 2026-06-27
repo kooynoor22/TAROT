@@ -186,7 +186,7 @@ ${report.consejoMagico}
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 print:p-0 print:bg-white print:static print:overflow-visible">
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 print-modal-overlay">
         {/* Print Styles */}
         <style dangerouslySetInnerHTML={{ __html: `
           @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
@@ -201,30 +201,80 @@ ${report.consejoMagico}
           @media print {
             body {
               background: #faf6f0 !important;
+              color: #1a1510 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: visible !important;
+              height: auto !important;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
             body * {
               visibility: hidden;
             }
-            .print-scroll, .print-scroll * {
-              visibility: visible;
+            .print-modal-overlay,
+            .print-modal-overlay *,
+            .print-modal-content,
+            .print-modal-content *,
+            .print-modal-body,
+            .print-modal-body *,
+            .print-scroll,
+            .print-scroll * {
+              visibility: visible !important;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
-            .print-scroll {
-              position: absolute;
-              left: 0;
-              top: 0;
+            .print-modal-overlay {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              height: auto !important;
+              min-height: auto !important;
+              background: #faf6f0 !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              display: block !important;
+              overflow: visible !important;
+              z-index: auto !important;
+            }
+            .print-modal-content {
+              position: static !important;
+              display: block !important;
               width: 100% !important;
               max-width: 100% !important;
+              max-height: none !important;
+              height: auto !important;
+              overflow: visible !important;
+              border: none !important;
+              box-shadow: none !important;
+              background: #faf6f0 !important;
               margin: 0 !important;
               padding: 0 !important;
+            }
+            .print-modal-body {
+              display: block !important;
+              overflow: visible !important;
+              height: auto !important;
+              max-height: none !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              background: transparent !important;
+            }
+            .print-scroll {
+              position: static !important;
+              display: block !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              height: auto !important;
+              min-height: auto !important;
+              margin: 0 !important;
+              padding: 5mm !important;
               border: none !important;
               box-shadow: none !important;
               background: #faf6f0 !important;
               color: #1a1510 !important;
-              font-size: 12pt !important;
+              font-size: 11pt !important;
             }
             .no-print {
               display: none !important;
@@ -232,15 +282,19 @@ ${report.consejoMagico}
             .print-parchment {
               background: #faf6f0 !important;
               border: 1px solid #c5a880 !important;
-              border-radius: 0 !important;
-              padding: 20mm !important;
+              border-radius: 8px !important;
+              padding: 15mm !important;
               box-shadow: none !important;
+              margin: 0 !important;
+              height: auto !important;
+              min-height: auto !important;
             }
             .wood-container {
               background: none !important;
               border: none !important;
               padding: 0 !important;
               box-shadow: none !important;
+              margin: 0 !important;
             }
           }
         `}} />
@@ -249,7 +303,7 @@ ${report.consejoMagico}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] print:max-h-none print:shadow-none print:border-none print:rounded-none"
+          className="relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] print-modal-content"
         >
           {/* Header (No print) */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-slate-950/60 no-print">
@@ -277,7 +331,7 @@ ${report.consejoMagico}
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-slate-950/20 print:overflow-visible print:p-0">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-slate-950/20 print-modal-body">
             {loading && (
               <div className="flex flex-col items-center justify-center py-20 px-4 text-center space-y-6">
                 <div className="relative flex items-center justify-center">
