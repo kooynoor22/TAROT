@@ -136,36 +136,59 @@ Genera una interpretación mística y profesional profunda para cada carta en el
 
       // 1. Intentar con OpenRouter si la clave de API está configurada
       if (process.env.OPENROUTER_API_KEY) {
-        try {
-          console.log("Invocando oráculo mediante OpenRouter...");
-          const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              "model": "openrouter/free",
-              "messages": [
-                {
-                  "role": "user",
-                  "content": `${systemPrompt}\n\n${prompt}`
-                }
-              ],
-              "reasoning": { "enabled": true }
-            })
-          });
+        const modelsToTry = [];
+        if (process.env.OPENROUTER_MODEL) {
+          modelsToTry.push(process.env.OPENROUTER_MODEL);
+        }
+        // Enrutadores automáticos de OpenRouter
+        modelsToTry.push("openrouter/auto");
+        modelsToTry.push("openrouter/free");
+        
+        // Modelos gratuitos específicos de respaldo
+        modelsToTry.push("google/gemini-2.5-flash:free");
+        modelsToTry.push("meta-llama/llama-3.3-70b-instruct:free");
+        modelsToTry.push("deepseek/deepseek-r1:free");
 
-          if (response.ok) {
-            const result = await response.json();
-            const message = result.choices[0].message;
-            responseText = message.content;
-            console.log("Respuesta obtenida de OpenRouter con razonamiento.");
-          } else {
-            console.warn(`OpenRouter devolvió un estado no exitoso: ${response.status}. Usando respaldo...`);
+        for (const model of modelsToTry) {
+          try {
+            console.log(`Invocando oráculo mediante OpenRouter con el modelo: ${model}...`);
+            const isReasoningModel = model.includes("r1") || model.includes("reasoning");
+
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://ai.studio/build",
+                "X-Title": "Oráculo de Tarot"
+              },
+              body: JSON.stringify({
+                "model": model,
+                "messages": [
+                  {
+                    "role": "user",
+                    "content": `${systemPrompt}\n\n${prompt}`
+                  }
+                ],
+                "temperature": 0.85,
+                ...(isReasoningModel ? { "reasoning": { "enabled": true } } : {})
+              })
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              if (result.choices && result.choices[0] && result.choices[0].message) {
+                responseText = result.choices[0].message.content;
+                console.log(`Respuesta obtenida con éxito de OpenRouter usando el modelo: ${model}`);
+                break;
+              }
+            } else {
+              const errText = await response.text();
+              console.warn(`OpenRouter con modelo ${model} devolvió un estado no exitoso: ${response.status}. Detalle: ${errText}`);
+            }
+          } catch (orError: any) {
+            console.error(`Error al conectar con OpenRouter usando el modelo ${model}:`, orError.message || orError);
           }
-        } catch (orError) {
-          console.error("Error al conectar con OpenRouter, usando Gemini de respaldo...", orError);
         }
       }
 
