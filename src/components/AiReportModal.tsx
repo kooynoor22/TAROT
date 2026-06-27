@@ -113,11 +113,29 @@ export default function AiReportModal({
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "No se pudo conectar con el oráculo.");
+        let errMsg = "No se pudo conectar con el oráculo.";
+        try {
+          const errData = await response.json();
+          errMsg = errData.error || errMsg;
+        } catch (e) {
+          try {
+            const rawText = await response.text();
+            if (rawText) {
+              errMsg = rawText.length > 200 ? rawText.substring(0, 200) + "..." : rawText;
+            }
+          } catch (e2) {}
+        }
+        throw new Error(errMsg);
       }
 
-      const data = await response.json();
+      const rawResponseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(rawResponseText);
+      } catch (parseErr) {
+        throw new Error(`Respuesta inválida del oráculo. Por favor, intenta de nuevo. Detalle: ${rawResponseText.substring(0, 150)}...`);
+      }
+
       setReport(data);
       soundManager.playFlip();
       triggerHaptic([40, 60]);

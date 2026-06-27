@@ -73,6 +73,106 @@ function robustParseJson(text: string): any {
   }
 }
 
+function parsePlainTextToTarotReport(text: string, drawnCards: any[]): any {
+  const cleanText = text.trim();
+  
+  const sections = {
+    introduccion: "",
+    analisisCartas: [] as any[],
+    sintesis: "",
+    consejoMagico: ""
+  };
+
+  // Initialize card analysis list
+  drawnCards.forEach((c: any) => {
+    sections.analisisCartas.push({
+      carta: `${c.card.name} (${c.inverted ? 'Invertida' : 'Al derecho'})`,
+      significado: ""
+    });
+  });
+
+  const lines = cleanText.split("\n");
+  let currentSection = "introduccion";
+  let currentCardIdx = 0;
+  let currentTextAccumulator = [] as string[];
+
+  const saveSection = (section: string, accumulator: string[], cardIdx: number) => {
+    const sectionText = accumulator.join("\n").trim();
+    if (!sectionText) return;
+    
+    if (section === "introduccion") {
+      sections.introduccion = (sections.introduccion ? sections.introduccion + "\n" : "") + sectionText;
+    } else if (section === "analisisCartas") {
+      if (sections.analisisCartas[cardIdx]) {
+        sections.analisisCartas[cardIdx].significado = (sections.analisisCartas[cardIdx].significado ? sections.analisisCartas[cardIdx].significado + "\n" : "") + sectionText;
+      }
+    } else if (section === "sintesis") {
+      sections.sintesis = (sections.sintesis ? sections.sintesis + "\n" : "") + sectionText;
+    } else if (section === "consejoMagico") {
+      sections.consejoMagico = (sections.consejoMagico ? sections.consejoMagico + "\n" : "") + sectionText;
+    }
+  };
+
+  for (const line of lines) {
+    const lowerLine = line.toLowerCase().trim();
+    
+    if (lowerLine.includes("introducción") || lowerLine.includes("introduccion") || lowerLine.includes("bienvenida")) {
+      saveSection(currentSection, currentTextAccumulator, currentCardIdx);
+      currentSection = "introduccion";
+      currentTextAccumulator = [];
+    } else if (lowerLine.includes("análisis") || lowerLine.includes("analisis") || lowerLine.includes("cartas") || lowerLine.includes("interpretación") || lowerLine.includes("interpretacion")) {
+      saveSection(currentSection, currentTextAccumulator, currentCardIdx);
+      currentSection = "analisisCartas";
+      currentTextAccumulator = [];
+    } else if (lowerLine.includes("síntesis") || lowerLine.includes("sintesis") || lowerLine.includes("integración") || lowerLine.includes("integracion") || lowerLine.includes("resumen")) {
+      saveSection(currentSection, currentTextAccumulator, currentCardIdx);
+      currentSection = "sintesis";
+      currentTextAccumulator = [];
+    } else if (lowerLine.includes("consejo") || lowerLine.includes("magico") || lowerLine.includes("mágico") || lowerLine.includes("ritual") || lowerLine.includes("meditación") || lowerLine.includes("meditacion")) {
+      saveSection(currentSection, currentTextAccumulator, currentCardIdx);
+      currentSection = "consejoMagico";
+      currentTextAccumulator = [];
+    } else {
+      let foundCardHeader = false;
+      if (currentSection === "analisisCartas" || currentSection === "introduccion") {
+        for (let idx = 0; idx < drawnCards.length; idx++) {
+          const cardName = drawnCards[idx].card.name.toLowerCase();
+          if (lowerLine.includes(cardName) || lowerLine.includes(`carta ${idx + 1}`)) {
+            saveSection(currentSection, currentTextAccumulator, currentCardIdx);
+            currentSection = "analisisCartas";
+            currentCardIdx = idx;
+            currentTextAccumulator = [];
+            foundCardHeader = true;
+            break;
+          }
+        }
+      }
+      if (!foundCardHeader) {
+        currentTextAccumulator.push(line);
+      }
+    }
+  }
+  saveSection(currentSection, currentTextAccumulator, currentCardIdx);
+
+  if (!sections.introduccion.trim()) {
+    sections.introduccion = cleanText.substring(0, Math.min(250, cleanText.length)) + "...";
+  }
+  if (!sections.sintesis.trim()) {
+    sections.sintesis = "Las cartas revelan una profunda sincronía para tu camino actual.";
+  }
+  if (!sections.consejoMagico.trim()) {
+    sections.consejoMagico = "Medita sobre las imágenes de las cartas seleccionadas y su simbología.";
+  }
+  
+  sections.analisisCartas.forEach((ac: any, idx: number) => {
+    if (!ac.significado.trim()) {
+      ac.significado = `Interpretación de la carta ${ac.carta} en tu lectura actual.`;
+    }
+  });
+
+  return sections;
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -263,7 +363,15 @@ Genera una interpretación mística y profesional profunda para cada carta en el
         throw new Error("No se pudo obtener una respuesta válida del oráculo.");
       }
 
-      const reportData = robustParseJson(responseText);
+      let reportData;
+      try {
+        console.log("Intentando parsear respuesta JSON de manera robusta...");
+        reportData = robustParseJson(responseText);
+      } catch (parseErr: any) {
+        console.warn("robustParseJson falló. Intentando extraer reporte estructurado a partir de texto plano:", parseErr.message);
+        reportData = parsePlainTextToTarotReport(responseText, drawnCards);
+      }
+      
       res.json(reportData);
 
     } catch (err: any) {
@@ -282,7 +390,7 @@ Genera una interpretación mística y profesional profunda para cada carta en el
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*all', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
