@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TarotCard, tarotDeck } from './data/tarot';
 import TarotCardComponent from './components/TarotCard';
-import { Sparkles, MoonStar, History, BarChart3, LayoutDashboard, LogIn, LogOut, Users, Volume2, VolumeX } from 'lucide-react';
+import { Sparkles, MoonStar, History, BarChart3, LayoutDashboard, LogIn, LogOut, Users, Volume2, VolumeX, X } from 'lucide-react';
 import { initAuth, signInWithGoogle, signOutUser, Person } from './lib/firebase';
 import { User } from 'firebase/auth';
 import DrawSection from './components/DrawSection';
@@ -17,6 +17,9 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [preselectedPerson, setPreselectedPerson] = useState<Person | null>(null);
   const [muted, setMuted] = useState(soundManager.getMuted());
+  const [showVideo, setShowVideo] = useState(() => {
+    return localStorage.getItem('tarot_intro_video_dismissed') !== 'true';
+  });
 
   useEffect(() => {
     // Subscribe to global mute state changes
@@ -138,6 +141,39 @@ export default function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-12">
+        {user && showVideo && (
+          <div className="max-w-3xl mx-auto mb-8 bg-slate-900/60 border border-purple-500/20 rounded-2xl p-4 sm:p-6 shadow-2xl backdrop-blur-sm relative overflow-hidden">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+              <h3 className="text-base sm:text-lg font-serif text-purple-300 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
+                Mensaje de Bienvenida del Oráculo
+              </h3>
+              <button 
+                onClick={() => {
+                  triggerHaptic(15);
+                  setShowVideo(false);
+                  localStorage.setItem('tarot_intro_video_dismissed', 'true');
+                }}
+                className="p-1.5 rounded-full hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 transition-colors"
+                title="Ocultar video"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="aspect-video w-full rounded-2xl overflow-hidden border-[10px] border-amber-950/90 bg-slate-950 relative shadow-[0_0_50px_rgba(245,158,11,0.25)] ring-4 ring-amber-500/20">
+              {/* Moldura dorada interna del cuadro */}
+              <div className="absolute inset-0 pointer-events-none border-2 border-amber-500/40 rounded-[6px] m-1 z-10" />
+              <iframe
+                src="https://player.cloudinary.com/embed/?cloud_name=dd4knv7yn&public_id=videotarotistainicio&profile=cld-looping&autoplay=true&loop=false&controls=false&hide_controls=true&cld_params=%7B%22controls%22%3Afalse%7D"
+                className="absolute inset-[3px] w-[calc(100%-6px)] h-[calc(100%-6px)] rounded-lg"
+                allow="autoplay; fullscreen"
+                allowFullScreen
+                style={{ border: 0 }}
+              />
+            </div>
+          </div>
+        )}
+
         {!user && (
           <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-8 text-sm text-purple-200 max-w-2xl mx-auto flex flex-col items-center text-center">
             <p className="font-semibold mb-2 text-purple-300">Conéctate para guardar tu progreso</p>
