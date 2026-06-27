@@ -164,7 +164,7 @@ export default function App() {
               {/* Moldura dorada interna del cuadro */}
               <div className="absolute inset-0 pointer-events-none border-2 border-amber-500/40 rounded-[6px] m-1 z-10" />
               <iframe
-                src="https://player.cloudinary.com/embed/?cloud_name=dd4knv7yn&public_id=videotarotistainicio&profile=cld-looping&autoplay=true&loop=false&controls=false&hide_controls=true&cld_params=%7B%22controls%22%3Afalse%7D"
+                src="https://player.cloudinary.com/embed/?cloud_name=dd4knv7yn&public_id=videotarotistainicio&profile=cld-default&autoplay=true&loop=false&muted=false&controls=false&hide_controls=true&cld_params=%7B%22controls%22%3Afalse%2C%22muted%22%3Afalse%7D"
                 className="absolute inset-[3px] w-[calc(100%-6px)] h-[calc(100%-6px)] rounded-lg"
                 allow="autoplay; fullscreen"
                 allowFullScreen
